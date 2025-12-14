@@ -1,0 +1,232 @@
+
+<div class="flex flex-col space-y-6">
+  <!-- Portfolio Value -->
+  <div class="text-center">
+    <h2 class="text-lg font-semibold text-gray-500 dark:text-gray-400">ارزش کل دارایی</h2>
+    <p class="text-3xl font-bold text-amber-400 tracking-tight">
+      {{ walletDetails().totalValue | number:'1.0-0' }}
+      <span class="text-xl text-gray-500 dark:text-gray-400">تومان</span>
+    </p>
+  </div>
+
+  <!-- New Portfolio Chart -->
+  <app-portfolio-chart 
+    [assets]="walletDetails().assets" 
+    [irtBalance]="walletDetails().irtBalance"
+    [totalValue]="walletDetails().totalValue"
+  ></app-portfolio-chart>
+
+  <!-- Toman Balance & Management -->
+  <div class="bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg">
+      <div class="flex justify-between items-center flex-wrap gap-2">
+        <div>
+          <span class="text-gray-600 dark:text-gray-300">موجودی تومان</span>
+          <span class="font-mono text-lg block">{{ walletDetails().irtBalance | number:'1.0-0' }} تومان</span>
+        </div>
+        <div class="flex space-x-2 space-x-reverse">
+           <button (click)="toggleActionForm('toman_deposit')" class="bg-amber-400 hover:bg-amber-500 text-black font-bold py-2 px-3 rounded-lg transition-colors text-sm shadow-lg shadow-amber-500/20">واریز تومان</button>
+           <button (click)="toggleActionForm('toman_withdraw')" class="bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-2 px-3 rounded-lg transition-colors text-sm">برداشت تومان</button>
+        </div>
+      </div>
+      <!-- Toman Deposit Form -->
+      @if (actionType() === 'toman_deposit') {
+        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 animate-fade-in">
+           <h4 class="font-semibold mb-3 text-amber-500 dark:text-amber-400">واریز تومان</h4>
+           <div class="mb-6 bg-gray-200 dark:bg-gray-900/50 p-4 rounded-lg space-y-4 text-sm border border-black/5 dark:border-white/5">
+             <p class="text-gray-600 dark:text-gray-300 text-center !mb-4">برای افزایش موجودی، لطفاً وجه را به یکی از حساب‌های زیر واریز کرده و سپس فرم زیر را برای ثبت درخواست خود تکمیل نمایید.</p>
+             @if(tomanDepositInfo().usdtWalletAddress) { 
+                 <div class="text-right">
+                    <p class="text-gray-500 dark:text-gray-400 mb-1">آدرس ولت تتر (USDT):</p>
+                    <div class="flex items-center gap-2 bg-gray-300 dark:bg-black/30 p-2 rounded-md border border-black/10 dark:border-white/10">
+                        <p class="font-mono text-gray-800 dark:text-gray-200 break-all select-all tracking-wider flex-grow text-xs sm:text-sm">{{ tomanDepositInfo().usdtWalletAddress }}</p>
+                        <button (click)="copyToClipboard(tomanDepositInfo().usdtWalletAddress)" class="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white px-2 py-1 bg-black/10 dark:bg-white/10 rounded text-xs transition-colors">کپی</button>
+                    </div>
+                    <div class="mt-4 flex justify-center bg-white p-2 rounded-lg" [class.hidden]="!tomanDepositInfo().usdtWalletAddress">
+                        <canvas id="qr-user-toman-usdt"></canvas>
+                    </div>
+                 </div> 
+             }
+             @if(tomanDepositInfo().cardNumber) { 
+                 <div class="text-right">
+                     <p class="text-gray-500 dark:text-gray-400 mb-1">شماره کارت:</p>
+                     <div class="flex items-center gap-2 bg-gray-300 dark:bg-black/30 p-2 rounded-md border border-black/10 dark:border-white/10">
+                         <p class="font-mono text-gray-800 dark:text-gray-200 break-all select-all tracking-wider flex-grow text-lg">{{ tomanDepositInfo().cardNumber }}</p>
+                         <button (click)="copyToClipboard(tomanDepositInfo().cardNumber)" class="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white px-2 py-1 bg-black/10 dark:bg-white/10 rounded text-xs transition-colors">کپی</button>
+                     </div>
+                 </div> 
+             }
+             @if(tomanDepositInfo().shabaNumber) { <div class="text-right"><p class="text-gray-500 dark:text-gray-400">شماره شبا (بدون IR):</p><p class="font-mono text-gray-800 dark:text-gray-200 break-all select-all tracking-wider">{{ tomanDepositInfo().shabaNumber }}</p></div> }
+             @if(showCopyFeedback()) { <div class="text-center text-amber-500 dark:text-amber-400 text-xs font-bold animate-pulse">کپی شد!</div> }
+           </div>
+           <h4 class="font-semibold mb-3 text-amber-500 dark:text-amber-400 border-t border-gray-200 dark:border-gray-700 pt-4">ثبت اطلاعات واریز</h4>
+            <div class="flex flex-col space-y-4">
+              <input type="number" [(ngModel)]="tomanAmount" placeholder="مبلغ به تومان" class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-mono text-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+              <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">تصویر رسید بانکی</label>
+                  <input (change)="onFileSelected($event, 'toman')" type="file" accept="image/*" class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-amber-200 dark:file:bg-amber-800 file:text-amber-700 dark:file:text-amber-300 hover:file:bg-amber-300 dark:hover:file:bg-amber-700"/>
+              </div>
+              @if (tomanReceiptImage()) {
+                <div class="p-2 bg-gray-200 dark:bg-gray-900/50 rounded-lg">
+                    <img [src]="tomanReceiptImage()" alt="پیش‌نمایش رسید" class="max-h-40 rounded-md mx-auto">
+                </div>
+              }
+              <button (click)="handleTomanDeposit()" [disabled]="!tomanAmount() || tomanAmount() <= 0 || !tomanReceiptImage()" class="w-full py-2 rounded-lg font-bold text-lg text-black bg-amber-400 hover:bg-amber-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">ثبت درخواست واریز</button>
+              @if (tomanStatus(); as status) {
+                <div class="p-2 rounded-lg text-center text-sm font-semibold" [class.bg-green-500/20]="status.success" [class.text-green-500 dark:text-green-400]="status.success" [class.bg-red-500/20]="!status.success" [class.text-red-500 dark:text-red-400]="!status.success">{{ status.message }}</div>
+              }
+            </div>
+        </div>
+      }
+      <!-- Toman Withdraw Form -->
+      @if (actionType() === 'toman_withdraw') {
+        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 animate-fade-in">
+           <h4 class="font-semibold mb-3 text-gray-600 dark:text-gray-400">برداشت تومان</h4>
+            <div class="flex flex-col space-y-4">
+              <input type="number" [(ngModel)]="tomanAmount" placeholder="مبلغ به تومان" class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-mono text-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none">
+              <input type="text" [(ngModel)]="tomanShabaNumber" placeholder="شماره شبا (بدون IR)" class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-mono text-base focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none">
+              <button (click)="handleTomanWithdraw()" [disabled]="!tomanAmount() || tomanAmount() <= 0 || !tomanShabaNumber().trim()" class="w-full py-2 rounded-lg font-bold text-lg text-gray-800 dark:text-gray-200 bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">ثبت درخواست برداشت</button>
+               @if (tomanStatus(); as status) {
+                <div class="p-2 rounded-lg text-center text-sm font-semibold" [class.bg-green-500/20]="status.success" [class.text-green-500 dark:text-green-400]="status.success" [class.bg-red-500/20]="!status.success" [class.text-red-500 dark:text-red-400]="!status.success">{{ status.message }}</div>
+              }
+            </div>
+        </div>
+      }
+  </div>
+
+  <!-- Digital Assets -->
+  <div>
+    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+        <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">کیف پول ارزهای دیجیتال</h3>
+        <!-- Search Input -->
+        <div class="relative w-full sm:w-auto sm:max-w-xs">
+            <input 
+              type="text" 
+              [(ngModel)]="searchTerm"
+              placeholder="جستجوی ارز..."
+              class="w-full p-2 pl-8 bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white focus:ring-1 focus:ring-amber-400 focus:border-amber-400 outline-none transition-all text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        </div>
+    </div>
+    <div class="space-y-3">
+        @if (walletDetails().assets.length > 0) {
+            @for (asset of walletDetails().assets; track asset.id) {
+              <div class="bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden transition-all duration-300 border border-gray-200 dark:border-gray-700/50" [class.opacity-75]="asset.amount === 0">
+                <div class="p-4 flex items-center justify-between flex-wrap gap-2">
+                  <div class="flex items-center space-x-4 space-x-reverse flex-grow">
+                    <div [innerHTML]="asset.sanitizedLogo" [class.grayscale]="asset.amount === 0" class="transition-all"></div>
+                    <div>
+                      <p class="font-bold text-lg text-gray-900 dark:text-white">{{ asset.name }} ({{asset.symbol}})</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 font-mono">{{ asset.amount | number:'1.2-8' }}</p>
+                    </div>
+                  </div>
+                  <div class="text-left mx-4 flex-shrink-0">
+                    <p class="font-semibold font-mono text-lg text-gray-900 dark:text-white">{{ asset.valueIrt | number:'1.0-0' }} تومان</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-mono">@ {{ asset.price | number:'1.0-0' }}</p>
+                  </div>
+                  <div class="flex space-x-2 space-x-reverse flex-shrink-0">
+                    <button (click)="toggleActionForm('deposit', asset.id)" class="bg-amber-400 hover:bg-amber-500 text-black font-bold py-2 px-3 rounded-lg transition-colors text-sm shadow-lg shadow-amber-500/20">واریز</button>
+                    <button (click)="toggleActionForm('withdraw', asset.id)" class="bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-2 px-3 rounded-lg transition-colors text-sm" [disabled]="asset.amount === 0" [class.opacity-50]="asset.amount === 0" [class.cursor-not-allowed]="asset.amount === 0">برداشت</button>
+                  </div>
+                </div>
+
+                <!-- Crypto Deposit Form -->
+                @if (selectedAssetForAction() === asset.id && actionType() === 'deposit') {
+                  <div class="bg-gray-200 dark:bg-gray-800 p-4 border-t border-gray-300 dark:border-gray-700 animate-fade-in relative">
+                    <div class="absolute inset-0 bg-amber-500/5 pointer-events-none"></div>
+                    <h4 class="font-semibold mb-4 text-amber-500 dark:text-amber-400 flex items-center gap-2 relative z-10">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" /></svg>
+                       درخواست واریز {{asset.name}}
+                    </h4>
+                    
+                    <div class="mb-6 bg-white dark:bg-black/40 backdrop-blur-md p-5 rounded-2xl border border-gray-300 dark:border-white/10 relative z-10 text-center">
+                       @if(depositInfo()[asset.id]?.walletAddress) {
+                          <p class="text-gray-600 dark:text-gray-300 text-sm mb-3">آدرس کیف پول جهت واریز:</p>
+                          
+                          <div class="flex flex-col sm:flex-row items-center justify-between bg-gray-100 dark:bg-gray-900/80 p-3 rounded-xl border border-amber-500/30 gap-3">
+                             <div class="font-mono text-amber-600 dark:text-amber-300 text-sm sm:text-base break-all text-center sm:text-right px-2">
+                                {{ depositInfo()[asset.id].walletAddress }}
+                             </div>
+                             <button (click)="copyToClipboard(depositInfo()[asset.id].walletAddress)" class="flex-shrink-0 bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                کپی آدرس
+                             </button>
+                          </div>
+                          
+                          <div class="mt-4 flex justify-center bg-white p-2 rounded-lg" [class.hidden]="!depositInfo()[asset.id].walletAddress">
+                            <canvas [id]="'qr-user-' + asset.id"></canvas>
+                          </div>
+
+                          @if(showCopyFeedback()) { <p class="text-amber-500 dark:text-amber-400 text-xs font-bold mt-2 animate-bounce">آدرس کپی شد!</p> }
+                          
+                          <p class="text-yellow-600 dark:text-yellow-500/80 text-xs mt-3 bg-yellow-500/10 p-2 rounded-lg inline-block">
+                             ⚠️ تنها رمزارز <span class="font-bold text-yellow-700 dark:text-yellow-400">{{ asset.symbol }}</span> را به این آدرس واریز کنید. ارسال سایر ارزها منجر به از دست رفتن سرمایه می‌شود.
+                          </p>
+                       } @else {
+                          <div class="text-red-500 dark:text-red-400 bg-red-400/10 p-3 rounded-xl border border-red-400/20">
+                             ⛔ آدرس واریز برای این ارز توسط کارشناс تنظیم نشده است.
+                          </div>
+                       }
+                    </div>
+
+                    <div class="relative z-10">
+                        <h4 class="font-semibold mb-3 text-gray-600 dark:text-gray-300 text-sm border-t border-gray-300 dark:border-white/10 pt-4">پس از واریز، اطلاعات زیر را تکمیل کنید:</h4>
+                        <div class="flex flex-col space-y-4">
+                          <div class="relative">
+                              <input type="number" [(ngModel)]="depositAmount" placeholder="مقدار واریز شده" class="w-full p-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-mono text-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none pr-20 transition-all">
+                              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm font-bold bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">{{ asset.symbol }}</span>
+                          </div>
+                          
+                          <div><input type="text" [(ngModel)]="depositTxHash" placeholder="هش تراکنش / TXID (اختیاری)" class="w-full p-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"></div>
+                          
+                          <div class="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-xl border border-dashed border-gray-400 dark:border-gray-500">
+                              <label class="block mb-2 text-sm font-medium text-gray-600 dark:text-gray-300">بارگذاری تصویر رسید:</label>
+                              <input (change)="onFileSelected($event, 'crypto')" type="file" accept="image/*" class="block w-full text-sm text-gray-500 dark:text-gray-400 file:ml-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-200 dark:file:bg-amber-600 file:text-amber-800 dark:file:text-white hover:file:bg-amber-300 dark:hover:file:bg-amber-700 cursor-pointer"/>
+                          </div>
+                          
+                          @if (depositReceiptImage()) { 
+                              <div class="p-2 bg-gray-100 dark:bg-gray-900/50 rounded-xl text-center">
+                                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">پیش‌نمایش:</p>
+                                  <img [src]="depositReceiptImage()" alt="پیش‌نمایش رسید" class="max-h-40 rounded-lg mx-auto border border-gray-300 dark:border-white/20">
+                              </div> 
+                          }
+                          
+                          <button (click)="handleDepositRequest()" [disabled]="!depositAmount() || depositAmount() <= 0 || !depositReceiptImage()" class="w-full py-3 rounded-xl font-bold text-lg text-black bg-amber-400 hover:bg-amber-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-900/50 transform hover:-translate-y-0.5">
+                              تایید واریز انجام شده
+                          </button>
+                          
+                          @if (depositStatus(); as status) { 
+                              <div class="p-3 rounded-xl text-center text-sm font-bold animate-fade-in" [class.bg-green-500/20]="status.success" [class.text-green-500 dark:text-green-400]="status.success" [class.bg-red-500/20]="!status.success" [class.text-red-500 dark:text-red-400]="!status.success">
+                                  {{ status.message }}
+                              </div> 
+                          }
+                        </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- Crypto Withdraw Form -->
+                @if (selectedAssetForAction() === asset.id && actionType() === 'withdraw') {
+                  <div class="bg-gray-200 dark:bg-gray-800 p-4 border-t border-gray-300 dark:border-gray-700 animate-fade-in relative">
+                     <div class="absolute inset-0 bg-gray-500/5 pointer-events-none"></div>
+                    <h4 class="font-semibold mb-3 text-gray-600 dark:text-gray-400 relative z-10 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" /></svg>
+                        برداشت {{asset.name}}
+                    </h4>
+                    <div class="flex flex-col space-y-4 relative z-10">
+                      <div class="relative"><input type="number" [(ngModel)]="withdrawAmount" placeholder="مقدار برداشت" class="w-full p-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-mono text-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none pr-20"><span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm font-bold bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">{{ asset.symbol }}</span></div>
+                      <div><input type="text" [(ngModel)]="withdrawAddress" placeholder="آدرس کیف پول مقصد" class="w-full p-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none"></div>
+                      <button (click)="handleWithdraw()" [disabled]="!withdrawAmount() || withdrawAmount() <= 0 || !withdrawAddress().trim()" class="w-full py-3 rounded-xl font-bold text-lg text-gray-800 dark:text-gray-200 bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-gray-900/50">ثبت درخواست برداشت</button>
+                      @if (withdrawStatus(); as status) { <div class="p-3 rounded-xl text-center text-sm font-semibold" [class.bg-green-500/20]="status.success" [class.text-green-500 dark:text-green-400]="status.success" [class.bg-red-500/20]="!status.success" [class.text-red-500 dark:text-red-400]="!status.success">{{ status.message }}</div> }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+        } @else {
+            <div class="text-center py-8 text-gray-500 bg-gray-100 dark:bg-gray-800/30 rounded-2xl">
+                <p>ارز مورد نظر در کیف پول شما یافت نشد.</p>
+            </div>
+        }
+    </div>
+  </div>
+</div>

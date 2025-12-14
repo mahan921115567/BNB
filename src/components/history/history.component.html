@@ -1,0 +1,113 @@
+
+<div class="flex flex-col space-y-6">
+    <div class="text-center mb-2">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">تاریخچه عملیات</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">لیست تمام تراکنش‌های خرید، فروش، واریز و برداشت</p>
+    </div>
+
+    <div class="space-y-3">
+      @if (historyItems().length === 0) {
+        <div class="flex flex-col items-center justify-center py-12 text-gray-500 bg-gray-100 dark:bg-gray-800/30 rounded-3xl border border-gray-200 dark:border-white/5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+            <p>هیچ عملیاتی برای نمایش وجود ندارد.</p>
+        </div>
+      } @else {
+        @for (item of historyItems(); track item.id) {
+          <div class="bg-white/50 dark:bg-gray-800/40 backdrop-blur-md p-4 rounded-3xl flex items-center space-x-4 space-x-reverse border border-gray-200 dark:border-white/5 hover:bg-gray-100/60 dark:hover:bg-gray-800/60 transition-all duration-300" [class.opacity-50]="item.status === 'rejected'">
+            
+            <!-- Color Indicator Bar -->
+            <div class="w-1.5 h-12 rounded-full shadow-lg"
+                 [class.bg-amber-400]="item.type === 'buy'"
+                 [class.shadow-amber-500/50]="item.type === 'buy'"
+                 
+                 [class.bg-gray-400]="item.type === 'sell'"
+                 [class.shadow-gray-500/50]="item.type === 'sell'"
+                 
+                 [class.bg-red-500]="item.type === 'withdraw' || item.type === 'toman_withdraw'"
+                 [class.shadow-red-500/50]="item.type === 'withdraw' || item.type === 'toman_withdraw'"
+                 
+                 [class.bg-green-500]="item.type === 'deposit' || item.type === 'toman_deposit'"
+                 [class.shadow-green-500/50]="item.type === 'deposit' || item.type === 'toman_deposit'">
+            </div>
+
+            <div class="flex-grow">
+              <div class="flex justify-between items-center">
+                <p class="font-bold text-gray-900 dark:text-white text-lg">
+                  @switch(item.type){ 
+                      @case('buy'){خرید} 
+                      @case('sell'){فروش} 
+                      @case('withdraw'){برداشت} 
+                      @case('deposit'){واریز} 
+                      @case('toman_deposit'){واریز تومان} 
+                      @case('toman_withdraw'){برداشت تومان} 
+                  } 
+                  <span class="text-gray-700 dark:text-gray-300 text-sm mr-1">{{ item.cryptoName }}</span>
+                </p>
+                <p class="font-mono text-lg font-bold tracking-tight" 
+                   [class.text-green-600]="item.type === 'buy' || item.type === 'deposit' || item.type === 'toman_deposit'" 
+                   [class.dark:text-green-400]="item.type === 'buy' || item.type === 'deposit' || item.type === 'toman_deposit'" 
+                   [class.text-red-600]="item.type === 'sell' || item.type === 'withdraw' || item.type === 'toman_withdraw'"
+                   [class.dark:text-red-400]="item.type === 'sell' || item.type === 'withdraw' || item.type === 'toman_withdraw'">
+                  
+                  @if (item.type === 'buy' || item.type === 'deposit') {
+                    +{{ item.cryptoAmount | number:'1.2-8' }}
+                  } @else if (item.type === 'sell' || item.type === 'withdraw') {
+                    -{{ item.cryptoAmount | number:'1.2-8' }}
+                  } @else if ('amount' in item) {
+                    @if (item.type === 'toman_deposit') {
+                      +{{item.amount | number:'1.0-0'}}
+                    } @else {
+                      -{{item.amount | number:'1.0-0'}}
+                    }
+                  }
+                  <span class="text-xs text-gray-500 ml-1">{{ item.cryptoSymbol }}</span>
+                </p>
+              </div>
+
+               <!-- Details -->
+               @if(item.type === 'withdraw' && 'destinationAddress' in item && item.destinationAddress) { 
+                   <p class="text-xs text-gray-500 font-mono mt-1 break-all bg-black/5 dark:bg-black/20 p-1.5 rounded-lg inline-block border border-gray-200 dark:border-white/5">
+                       <span class="text-gray-500 dark:text-gray-400">مقصد:</span> {{ item.destinationAddress }}
+                   </p> 
+               }
+               @if(item.type === 'deposit' && 'txHash' in item && item.txHash) { 
+                   <p class="text-xs text-gray-500 font-mono mt-1 break-all bg-black/5 dark:bg-black/20 p-1.5 rounded-lg inline-block border border-gray-200 dark:border-white/5">
+                       <span class="text-gray-500 dark:text-gray-400">TXID:</span> {{ item.txHash }}
+                   </p> 
+               }
+               @if(item.type === 'toman_withdraw' && 'shabaNumber' in item && item.shabaNumber) { 
+                   <p class="text-xs text-gray-500 font-mono mt-1 break-all bg-black/5 dark:bg-black/20 p-1.5 rounded-lg inline-block border border-gray-200 dark:border-white/5">
+                       <span class="text-gray-500 dark:text-gray-400">شبا:</span> {{ item.shabaNumber }}
+                   </p> 
+               }
+
+              <div class="flex justify-between items-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <p>{{ item.timestamp | date:'yyyy/MM/dd HH:mm' }}</p>
+                <span class="font-bold px-3 py-1 rounded-xl text-xs backdrop-blur-sm border" 
+                      [class.bg-yellow-500/10]="item.status === 'pending'" 
+                      [class.border-yellow-500/20]="item.status === 'pending'"
+                      [class.text-yellow-600]="item.status === 'pending'" 
+                      [class.dark:text-yellow-400]="item.status === 'pending'" 
+                      
+                      [class.bg-green-500/10]="item.status === 'approved'" 
+                      [class.border-green-500/20]="item.status === 'approved'"
+                      [class.text-green-600]="item.status === 'approved'" 
+                      [class.dark:text-green-400]="item.status === 'approved'" 
+                      
+                      [class.bg-red-500/10]="item.status === 'rejected'" 
+                      [class.border-red-500/20]="item.status === 'rejected'"
+                      [class.text-red-600]="item.status === 'rejected'" 
+                      [class.dark:text-red-400]="item.status === 'rejected'">
+                  @switch (item.status) { 
+                      @case ('pending') { در انتظار بررسی } 
+                      @case ('approved') { تایید شده } 
+                      @case ('rejected') { رد شده } 
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+      }
+    </div>
+</div>

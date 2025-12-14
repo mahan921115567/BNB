@@ -1,0 +1,444 @@
+
+@if (isLocked()) {
+  <div class="fixed inset-0 bg-white dark:bg-gray-900 z-50 flex flex-col items-center justify-center p-4">
+    <div class="bg-gray-100 dark:bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md text-center border border-yellow-500/30">
+      <h2 class="text-2xl font-bold text-yellow-500 dark:text-yellow-400 mb-6">قفل امنیتی کارشناс</h2>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">برای دسترسی به پنل کارشناс، لطفا پین کد را وارد کنید.</p>
+      
+      <input 
+        type="password" 
+        [(ngModel)]="enteredPin" 
+        (keyup.enter)="unlockApp()"
+        class="w-full text-center text-3xl tracking-widest p-3 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white mb-6 focus:ring-2 focus:ring-yellow-500 outline-none" 
+        placeholder="••••">
+      
+      <button (click)="unlockApp()" class="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-3 px-6 rounded-lg transition-colors mb-4">
+        باز کردن قفل
+      </button>
+      <button (click)="logout()" class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">خروج از حساب</button>
+      
+      @if (lockMessage()) {
+        <p class="text-red-500 dark:text-red-400 mt-4 font-semibold animate-pulse">{{ lockMessage() }}</p>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="w-full">
+    <header class="text-center mb-8 relative">
+      <h1 class="text-3xl sm:text-4xl font-bold text-yellow-500 dark:text-yellow-400">پنل کارشناс</h1>
+      <p class="text-gray-500 dark:text-gray-400 mt-2">مدیریت تراکنش‌ها و تنظیمات صرافی</p>
+      <button (click)="logout()" class="absolute top-0 left-0 bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-lg text-sm transition-colors">خروج</button>
+    </header>
+
+    <nav class="flex justify-center bg-gray-100 dark:bg-gray-800 rounded-lg p-2 mb-8 shadow-lg flex-wrap">
+      <button (click)="currentView.set('transactions')" [class.bg-amber-400]="currentView() === 'transactions'" [class.text-black]="currentView() === 'transactions'" [class.font-bold]="currentView() === 'transactions'" class="flex-1 py-2 px-4 rounded-md text-center font-semibold transition-colors duration-300 text-gray-800 dark:text-gray-200 hover:bg-amber-400/50">تراکنش‌ها</button>
+      <button (click)="currentView.set('deposits')" [class.bg-green-500]="currentView() === 'deposits'" [class.text-white]="currentView() === 'deposits'" [class.font-bold]="currentView() === 'deposits'" class="flex-1 py-2 px-4 rounded-md text-center font-semibold transition-colors duration-300 text-gray-800 dark:text-gray-200 hover:bg-green-500/50 mx-2">واریز ارز</button>
+      <button (click)="currentView.set('toman_requests')" [class.bg-gray-500]="currentView() === 'toman_requests'" [class.text-white]="currentView() === 'toman_requests'" [class.font-bold]="currentView() === 'toman_requests'" class="flex-1 py-2 px-4 rounded-md text-center font-semibold transition-colors duration-300 text-gray-800 dark:text-gray-200 hover:bg-gray-500/50">درخواست‌های تومان</button>
+      <button (click)="currentView.set('users')" [class.bg-blue-500]="currentView() === 'users'" [class.text-white]="currentView() === 'users'" [class.font-bold]="currentView() === 'users'" class="flex-1 py-2 px-4 rounded-md text-center font-semibold transition-colors duration-300 text-gray-800 dark:text-gray-200 hover:bg-blue-500/50 mx-2">کاربران</button>
+      <button (click)="currentView.set('recovery')" [class.bg-red-500]="currentView() === 'recovery'" [class.text-white]="currentView() === 'recovery'" [class.font-bold]="currentView() === 'recovery'" class="flex-1 py-2 px-4 rounded-md text-center font-semibold transition-colors duration-300 text-gray-800 dark:text-gray-200 hover:bg-red-500/50">بازیابی حساب</button>
+      <button (click)="currentView.set('broadcast')" [class.bg-gray-500]="currentView() === 'broadcast'" [class.text-white]="currentView() === 'broadcast'" [class.font-bold]="currentView() === 'broadcast'" class="flex-1 py-2 px-4 rounded-md text-center font-semibold transition-colors duration-300 text-gray-800 dark:text-gray-200 hover:bg-gray-500/50 ml-2">پیام همگانی</button>
+      <button (click)="currentView.set('settings')" [class.bg-gray-500]="currentView() === 'settings'" [class.text-white]="currentView() === 'settings'" [class.font-bold]="currentView() === 'settings'" class="flex-1 py-2 px-4 rounded-md text-center font-semibold transition-colors duration-300 text-gray-800 dark:text-gray-200 hover:bg-gray-500/50 ml-2">تنظیمات</button>
+    </nav>
+
+    <main class="bg-gray-100 dark:bg-gray-800 p-6 rounded-xl shadow-2xl">
+      @switch (currentView()) {
+        @case ('transactions') {
+          <div class="space-y-8">
+            <div>
+              <h2 class="text-2xl font-bold text-amber-500 dark:text-amber-400 mb-4">تراکنش‌های در انتظار ({{ pendingTransactions().length }})</h2>
+              <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                @if (pendingTransactions().length === 0) { <p class="text-center text-gray-500 py-4">هیچ تراکنش در انتظاری وجود ندارد.</p> } 
+                @else { @for (tx of pendingTransactions(); track tx.id) {
+                    <div class="bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg">
+                      <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <p class="font-bold text-gray-900 dark:text-white">{{ tx.username }} - @switch(tx.type){@case('buy'){خرید} @case('sell'){فروش} @case('withdraw'){برداشت}} {{ tx.cryptoAmount | number:'1.2-6' }} {{ tx.cryptoSymbol }}</p>
+                          <p class="text-sm text-gray-600 dark:text-gray-400">{{ tx.timestamp | date:'yyyy/MM/dd HH:mm' }} - ارزش: {{ tx.irtAmount | number:'1.0-0' }} تومان</p>
+                        </div>
+                        <div class="flex space-x-2 space-x-reverse flex-shrink-0"><button (click)="approve(tx.id)" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">تایید</button><button (click)="reject(tx.id)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">رد</button></div>
+                      </div>
+                      @if(tx.type === 'withdraw' && tx.destinationAddress) { <div class="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600/50"><p class="text-xs text-gray-600 dark:text-gray-300">آدرس مقصد:</p><p class="text-sm text-yellow-600 dark:text-yellow-300 font-mono break-all">{{ tx.destinationAddress }}</p></div> }
+                    </div>
+                } }
+              </div>
+            </div>
+            <div>
+              <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">تاریخچه تراکنش‌ها</h2>
+               <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                @if (completedTransactions().length === 0) { <p class="text-center text-gray-500 py-4">هیچ تراکنش تکمیل شده‌ای وجود ندارد.</p> } 
+                @else { @for (tx of completedTransactions(); track tx.id) {
+                    <div class="bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg opacity-80">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="font-bold text-gray-900 dark:text-white">{{ tx.username }} - @switch(tx.type){@case('buy'){خرید} @case('sell'){فروش} @case('withdraw'){برداشت}} {{ tx.cryptoAmount | number:'1.2-6' }} {{ tx.cryptoSymbol }}</p>
+                          <p class="text-sm text-gray-600 dark:text-gray-400">{{ tx.timestamp | date:'yyyy/MM/dd HH:mm' }}</p>
+                        </div>
+                        <span class="font-bold px-3 py-1 rounded-full text-sm flex-shrink-0" [class.bg-green-500/20]="tx.status === 'approved'" [class.text-green-500]="tx.status === 'approved'" [class.dark:text-green-400]="tx.status === 'approved'" [class.bg-red-500/20]="tx.status === 'rejected'" [class.text-red-500]="tx.status === 'rejected'" [class.dark:text-red-400]="tx.status === 'rejected'">
+                          @switch (tx.status) { @case ('approved') { تایید شده } @case ('rejected') { رد شده } }
+                        </span>
+                      </div>
+                       @if(tx.type === 'withdraw' && tx.destinationAddress) { <div class="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600/50"><p class="text-xs text-gray-500 dark:text-gray-400">آدرس مقصد:</p><p class="text-sm text-gray-600 dark:text-gray-300 font-mono break-all">{{ tx.destinationAddress }}</p></div> }
+                    </div>
+                } }
+              </div>
+            </div>
+          </div>
+        }
+        @case('deposits') {
+          <div class="space-y-8">
+            <div>
+              <h2 class="text-2xl font-bold text-green-500 dark:text-green-400 mb-4">درخواست‌های واریز ارز ({{ pendingDepositRequests().length }})</h2>
+              <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                @if (pendingDepositRequests().length === 0) { <p class="text-center text-gray-500 py-4">هیچ درخواست واریزی در انتظار نیست.</p> } 
+                @else { @for (req of pendingDepositRequests(); track req.id) {
+                    <div class="bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg">
+                      <div class="flex items-start justify-between flex-wrap gap-4">
+                        <div class="flex-grow"><p class="font-bold text-gray-900 dark:text-white">{{ req.username }} - درخواست واریز {{ req.cryptoAmount | number:'1.2-6' }} {{ req.cryptoSymbol }}</p><p class="text-sm text-gray-600 dark:text-gray-400">{{ req.timestamp | date:'yyyy/MM/dd HH:mm' }}</p>
+                          @if (req.txHash) { <p class="text-xs text-gray-500 font-mono mt-1">TXID: {{ req.txHash }}</p> }
+                          <div class="mt-2 text-center"><a [href]="req.receiptImageUrl" target="_blank" class="text-sm text-blue-500 hover:underline">مشاهده رسید</a></div>
+                        </div>
+                        <div class="flex space-x-2 space-x-reverse flex-shrink-0"><button (click)="approveDeposit(req.id)" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">تایید</button><button (click)="rejectDeposit(req.id)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">رد</button></div>
+                      </div>
+                    </div>
+                } }
+              </div>
+            </div>
+            <div>
+              <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">تاریخچه واریزهای ارز</h2>
+               <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                @if (completedDepositRequests().length === 0) { <p class="text-center text-gray-500 py-4">هیچ درخواست تکمیل شده‌ای وجود ندارد.</p> } 
+                @else { @for (req of completedDepositRequests(); track req.id) {
+                    <div class="bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg opacity-80">
+                      <div class="flex items-center justify-between">
+                        <div><p class="font-bold text-gray-900 dark:text-white">{{ req.username }} - واریز {{ req.cryptoAmount | number:'1.2-6' }} {{ req.cryptoSymbol }}</p><p class="text-sm text-gray-600 dark:text-gray-400">{{ req.timestamp | date:'yyyy/MM/dd HH:mm' }}</p></div>
+                        <span class="font-bold px-3 py-1 rounded-full text-sm" [class.bg-green-500/20]="req.status === 'approved'" [class.text-green-500]="req.status === 'approved'" [class.dark:text-green-400]="req.status === 'approved'" [class.bg-red-500/20]="req.status === 'rejected'" [class.text-red-500]="req.status === 'rejected'" [class.dark:text-red-400]="req.status === 'rejected'">
+                          @switch (req.status) { @case ('approved') { تایید شده } @case ('rejected') { رد شده } }
+                        </span>
+                      </div>
+                    </div>
+                } }
+              </div>
+            </div>
+          </div>
+        }
+        @case('toman_requests') {
+           <div class="space-y-8">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">درخواست‌های تومان ({{ pendingTomanRequests().length }})</h2>
+              <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                @if (pendingTomanRequests().length === 0) { <p class="text-center text-gray-500 py-4">هیچ درخواستی در انتظار نیست.</p> } 
+                @else { @for (req of pendingTomanRequests(); track req.id) {
+                    <div class="p-4 rounded-lg" [class.bg-green-500/10]="req.type === 'toman_deposit'" [class.dark:bg-green-900/30]="req.type === 'toman_deposit'" [class.bg-red-500/10]="req.type === 'toman_withdraw'" [class.dark:bg-red-900/30]="req.type === 'toman_withdraw'">
+                      <div class="flex items-start justify-between flex-wrap gap-4">
+                        <div>
+                          <p class="font-bold text-gray-900 dark:text-white">{{ req.username }} - درخواست @if(req.type === 'toman_deposit'){واریز} @else {برداشت} {{ req.amount | number:'1.0-0' }} تومان</p>
+                          <p class="text-sm text-gray-600 dark:text-gray-400">{{ req.timestamp | date:'yyyy/MM/dd HH:mm' }}</p>
+                           @if(req.type === 'toman_withdraw' && req.shabaNumber) { <p class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">شبا: {{req.shabaNumber}}</p> }
+                        </div>
+                        <div class="flex space-x-2 space-x-reverse flex-shrink-0"><button (click)="approveToman(req.id)" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">تایید</button><button (click)="rejectToman(req.id)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">رد</button></div>
+                      </div>
+                      @if(req.type === 'toman_deposit' && req.receiptImageUrl) { <div class="mt-2 text-center"><a [href]="req.receiptImageUrl" target="_blank" class="text-sm text-blue-500 hover:underline">مشاهده رسید</a></div> }
+                    </div>
+                } }
+              </div>
+            </div>
+            <div>
+              <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">تاریخچه درخواست‌های تومان</h2>
+              <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                @if (completedTomanRequests().length === 0) { <p class="text-center text-gray-500 py-4">هیچ درخواست تکمیل شده‌ای وجود ندارد.</p> } 
+                @else { @for (req of completedTomanRequests(); track req.id) {
+                    <div class="p-4 rounded-lg opacity-80" [class.bg-green-500/10]="req.type === 'toman_deposit'" [class.dark:bg-green-900/30]="req.type === 'toman_deposit'" [class.bg-red-500/10]="req.type === 'toman_withdraw'" [class.dark:bg-red-900/30]="req.type === 'toman_withdraw'">
+                      <div class="flex items-center justify-between">
+                        <div><p class="font-bold text-gray-900 dark:text-white">{{ req.username }} - @if(req.type === 'toman_deposit'){واریز} @else {برداشت} {{ req.amount | number:'1.0-0' }} تومان</p><p class="text-sm text-gray-600 dark:text-gray-400">{{ req.timestamp | date:'yyyy/MM/dd HH:mm' }}</p></div>
+                        <span class="font-bold px-3 py-1 rounded-full text-sm" [class.bg-green-500/20]="req.status === 'approved'" [class.text-green-500]="req.status === 'approved'" [class.dark:text-green-400]="req.status === 'approved'" [class.bg-red-500/20]="req.status === 'rejected'" [class.text-red-500]="req.status === 'rejected'" [class.dark:text-red-400]="req.status === 'rejected'">
+                          @switch (req.status) { @case ('approved') { تایید شده } @case ('rejected') { رد شده } }
+                        </span>
+                      </div>
+                    </div>
+                } }
+              </div>
+            </div>
+          </div>
+        }
+        @case('users') {
+          <div>
+            <h2 class="text-2xl font-bold text-blue-500 dark:text-blue-400 mb-4">مدیریت کاربران</h2>
+             <input type="text" [(ngModel)]="userSearchTerm" placeholder="جستجوی نام کاربری..." class="w-full p-2 mb-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+             <div class="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+                @for(user of filteredUsers(); track user.username) {
+                  <div class="bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg">
+                      <div class="flex items-center justify-between cursor-pointer" (click)="toggleUserDetails(user.username)">
+                          <p class="font-bold text-lg text-gray-900 dark:text-white">{{ user.username }}</p>
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform" [class.rotate-180]="expandedUser() === user.username" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                      </div>
+                      @if(expandedUser() === user.username) {
+                          @let walletDetails = getUserWalletDetails(user.username);
+                          <div class="mt-4 pt-4 border-t border-gray-300 dark:border-gray-600/50 animate-fade-in text-sm space-y-2">
+                              <p><strong class="text-gray-600 dark:text-gray-400">شماره تلفن:</strong> <span class="font-mono">{{ user.phone }}</span></p>
+                              <p><strong class="text-gray-600 dark:text-gray-400">کد ملی:</strong> <span class="font-mono">{{ user.nationalId }}</span></p>
+                              <p><strong class="text-gray-600 dark:text-gray-400">تاریخ تولد:</strong> <span class="font-mono">{{ user.birthDate }}</span></p>
+                              <p><strong class="text-gray-600 dark:text-gray-400">محل صدور:</strong> <span>{{ user.birthPlace }}</span></p>
+                              <p><strong class="text-gray-600 dark:text-gray-400">ایمیل:</strong> <span>{{ user.email || 'ثبت نشده' }}</span></p>
+                              <div class="pt-2 mt-2 border-t border-gray-300 dark:border-gray-600/50">
+                                  <p class="font-bold text-base">کیف پول:</p>
+                                  <p><strong>موجودی تومان:</strong> <span class="font-mono">{{ walletDetails.irtBalance | number:'1.0-0' }} تومان</span></p>
+                                  <p><strong>ارزش کل:</strong> <span class="font-mono">{{ walletDetails.totalValue | number:'1.0-0' }} تومان</span></p>
+                                  @if(walletDetails.assets.length > 0) {
+                                      <ul class="list-disc pr-5 mt-1">
+                                          @for(asset of walletDetails.assets; track asset.symbol) {
+                                              <li>{{ asset.symbol }}: <span class="font-mono">{{ asset.amount | number:'1.2-8' }}</span></li>
+                                          }
+                                      </ul>
+                                  }
+                              </div>
+                          </div>
+                      }
+                  </div>
+                }
+             </div>
+          </div>
+        }
+        @case('recovery') {
+          <div class="space-y-8">
+            <div>
+              <h2 class="text-2xl font-bold text-red-500 dark:text-red-400 mb-4">درخواست‌های بازیابی در انتظار ({{ pendingRecoveryRequests().length }})</h2>
+              <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                @if (pendingRecoveryRequests().length === 0) {
+                  <p class="text-center text-gray-500 py-4">هیچ درخواست بازیابی در انتظاری وجود ندارد.</p>
+                } @else {
+                  @for (req of pendingRecoveryRequests(); track req.id) {
+                    @let actualUser = getActualUserData(req.matchedUsername);
+                    @let actualWallet = getUserWalletDetails(req.matchedUsername);
+                    <div class="bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg border-l-4" [class.border-yellow-500]="req.matchedUsername" [class.border-red-500]="!req.matchedUsername">
+                      <!-- Header -->
+                      <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                        <div>
+                          <p class="font-bold text-gray-900 dark:text-white">
+                            درخواست از طرف: 
+                            @if(req.matchedUsername) {
+                              <span class="text-yellow-600 dark:text-yellow-400 font-mono">{{ req.matchedUsername }}</span> (کاربر یافت شد)
+                            } @else {
+                              <span class="text-red-600 dark:text-red-400">کاربر یافت نشد</span>
+                            }
+                          </p>
+                          <p class="text-sm text-gray-600 dark:text-gray-400">{{ req.timestamp | date:'yyyy/MM/dd HH:mm' }}</p>
+                        </div>
+                        <div class="flex space-x-2 space-x-reverse flex-shrink-0">
+                          <button (click)="approveRecovery(req.id)" [disabled]="!req.matchedUsername" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">تایید و ارسال ایمیل</button>
+                          <button (click)="rejectRecovery(req.id)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">رد کردن</button>
+                        </div>
+                      </div>
+                      
+                      @if (recoveryApprovalStatus()[req.id]; as status) {
+                        <div class="p-2 my-2 rounded-md text-center text-sm" [class.bg-green-500/20]="status.success" [class.text-green-600]="status.success" [class.bg-red-500/20]="!status.success" [class.text-red-600]="!status.success">
+                          {{ status.message }}
+                        </div>
+                      }
+
+                      <!-- Comparison Details -->
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- User Info Comparison -->
+                        <div class="bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
+                          <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-300 dark:border-gray-600 pb-1">مقایسه اطلاعات هویتی</h4>
+                          <div class="space-y-2 text-sm">
+                            <!-- Phone -->
+                            <div>
+                              <span class="font-bold text-gray-500">شماره تلفن:</span>
+                              <div class="flex items-center gap-2 font-mono">
+                                <span class="text-gray-800 dark:text-gray-200">{{ req.phone }}</span>
+                                @if(actualUser) {
+                                  <span [class.text-green-500]="req.phone === actualUser.phone" [class.text-red-500]="req.phone !== actualUser.phone">({{ actualUser.phone }})</span>
+                                }
+                              </div>
+                            </div>
+                            <!-- National ID -->
+                            <div>
+                              <span class="font-bold text-gray-500">کد ملی:</span>
+                              <div class="flex items-center gap-2 font-mono">
+                                <span class="text-gray-800 dark:text-gray-200">{{ req.nationalId }}</span>
+                                 @if(actualUser) {
+                                  <span [class.text-green-500]="req.nationalId === actualUser.nationalId" [class.text-red-500]="req.nationalId !== actualUser.nationalId">({{ actualUser.nationalId }})</span>
+                                }
+                              </div>
+                            </div>
+                            <!-- Birth Date -->
+                             <div>
+                              <span class="font-bold text-gray-500">تاریخ تولد:</span>
+                              <div class="flex items-center gap-2 font-mono">
+                                <span class="text-gray-800 dark:text-gray-200">{{ req.birthDate }}</span>
+                                 @if(actualUser) {
+                                  <span [class.text-green-500]="req.birthDate.trim() === actualUser.birthDate.trim()" [class.text-red-500]="req.birthDate.trim() !== actualUser.birthDate.trim()">({{ actualUser.birthDate }})</span>
+                                }
+                              </div>
+                            </div>
+                            <!-- Birth Place -->
+                             <div>
+                              <span class="font-bold text-gray-500">محل صدور:</span>
+                              <div class="flex items-center gap-2 font-mono">
+                                <span class="text-gray-800 dark:text-gray-200">{{ req.birthPlace }}</span>
+                                 @if(actualUser) {
+                                  <span [class.text-green-500]="req.birthPlace.trim() === actualUser.birthPlace.trim()" [class.text-red-500]="req.birthPlace.trim() !== actualUser.birthPlace.trim()">({{ actualUser.birthPlace }})</span>
+                                }
+                              </div>
+                            </div>
+                             <!-- Email -->
+                             <div>
+                              <span class="font-bold text-gray-500">ایمیل:</span>
+                              <div class="flex items-center gap-2 font-mono">
+                                <span class="text-gray-800 dark:text-gray-200">{{ req.email || '---' }}</span>
+                                 @if(actualUser) {
+                                  <span [class.text-green-500]="req.email?.trim() === actualUser.email?.trim()" [class.text-red-500]="req.email?.trim() !== actualUser.email?.trim()">({{ actualUser.email || '---' }})</span>
+                                }
+                              </div>
+                            </div>
+                          </div>
+                          <p class="text-xs text-gray-500 mt-2">مقادیر داخل پرانتز، اطلاعات ثبت شده در سیستم هستند.</p>
+                        </div>
+
+                        <!-- Wallet Balance Comparison -->
+                        <div class="bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
+                           <h4 class="font-semibold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-300 dark:border-gray-600 pb-1">مقایسه موجودی کیف پول</h4>
+                           <div class="space-y-2 text-sm">
+                              <!-- IRT -->
+                              <div>
+                                <span class="font-bold text-gray-500">موجودی تومان:</span>
+                                <div class="flex items-center gap-2 font-mono">
+                                   <span class="text-gray-800 dark:text-gray-200">{{ req.estimatedIrt | number }} (تخمینی)</span>
+                                   @if(actualUser) {
+                                      <span>/</span>
+                                      <span class="font-bold text-blue-500">{{ actualWallet.irtBalance | number }} (واقعی)</span>
+                                   }
+                                </div>
+                              </div>
+                              <!-- USDT -->
+                              <div>
+                                <span class="font-bold text-gray-500">موجودی تتر (USDT):</span>
+                                <div class="flex items-center gap-2 font-mono">
+                                   <span class="text-gray-800 dark:text-gray-200">{{ req.estimatedUsdt | number }} (تخمینی)</span>
+                                   @if(actualUser) {
+                                      <span>/</span>
+                                      <span class="font-bold text-blue-500">{{ actualWallet.usdtAmount | number:'1.2-6' }} (واقعی)</span>
+                                   }
+                                </div>
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+            <!-- Completed recovery requests -->
+            <div>
+              <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">تاریخچه درخواست‌های بازیابی</h2>
+              <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                @if (completedRecoveryRequests().length === 0) {
+                  <p class="text-center text-gray-500 py-4">هیچ درخواست تکمیل شده‌ای وجود ندارد.</p>
+                } @else {
+                  @for (req of completedRecoveryRequests(); track req.id) {
+                    <div class="bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg opacity-80">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="font-bold text-gray-900 dark:text-white">درخواست برای: {{ req.matchedUsername || req.phone }}</p>
+                          <p class="text-sm text-gray-600 dark:text-gray-400">{{ req.timestamp | date:'yyyy/MM/dd HH:mm' }}</p>
+                        </div>
+                        <span class="font-bold px-3 py-1 rounded-full text-sm flex-shrink-0" [class.bg-green-500/20]="req.status === 'approved'" [class.text-green-500]="req.status === 'approved'" [class.dark:text-green-400]="req.status === 'approved'" [class.bg-red-500/20]="req.status === 'rejected'" [class.text-red-500]="req.status === 'rejected'" [class.dark:text-red-400]="req.status === 'rejected'">
+                          @switch (req.status) {
+                            @case ('approved') { تایید شده }
+                            @case ('rejected') { رد شده }
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        }
+        @case('broadcast') {
+          <div>
+            <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">ارسال پیام همگانی</h2>
+            <div class="space-y-4 max-w-lg mx-auto">
+              <input type="text" [(ngModel)]="broadcastTitle" placeholder="عنوان پیام" class="w-full p-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+              <textarea [(ngModel)]="broadcastMessage" placeholder="متن پیام..." rows="4" class="w-full p-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600"></textarea>
+              <button (click)="sendBroadcast()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">ارسال پیام</button>
+              @if(broadcastStatus()) {
+                <p class="text-center text-green-600 dark:text-green-400 font-semibold">{{ broadcastStatus() }}</p>
+              }
+            </div>
+          </div>
+        }
+        @case('settings') {
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Exchange Settings -->
+            <div class="space-y-4 bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg">
+              <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">تنظیمات اصلی صرافی</h3>
+              <!-- Price Mode -->
+              <div>
+                <label class="font-semibold">حالت قیمت‌گذاری تتر (USDT):</label>
+                <div class="flex items-center gap-4 mt-2">
+                   <label class="flex items-center"><input type="radio" name="priceMode" value="manual" [(ngModel)]="exchangeConfigForm().priceMode" class="ml-2"> دستی</label>
+                   <label class="flex items-center"><input type="radio" name="priceMode" value="auto" [(ngModel)]="exchangeConfigForm().priceMode" class="ml-2"> خودکار (شبیه‌سازی)</label>
+                </div>
+              </div>
+              <!-- Manual Price -->
+              @if(exchangeConfigForm().priceMode === 'manual') {
+                <div class="animate-fade-in">
+                  <label for="manual-price" class="font-semibold">قیمت دستی تتر (تومان):</label>
+                  <input id="manual-price" type="number" [(ngModel)]="exchangeConfigForm().manualUsdtPrice" class="w-full p-2 mt-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+                </div>
+              }
+               <!-- Admin Lock PIN -->
+              <div>
+                  <label for="expert-pin" class="font-semibold">پین کد قفل کارشناس (اختیاری):</label>
+                  <input id="expert-pin" type="password" [(ngModel)]="exchangeConfigForm().expertPin" placeholder="برای فعال‌سازی پین وارد کنید" class="w-full p-2 mt-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">با تنظیم این پین، هنگام ورود به پنل کارشناс، ابتدا باید این کد را وارد کنید.</p>
+              </div>
+              <button (click)="saveExchangeConfig()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg">ذخیره تنظیمات صرافی</button>
+            </div>
+            
+            <!-- Toman Deposit Settings -->
+            <div class="space-y-4 bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg">
+                <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">اطلاعات واریز تومان</h3>
+                <div><label for="toman-card" class="font-semibold">شماره کارت:</label><input id="toman-card" type="text" [(ngModel)]="tomanDepositInfoForm().cardNumber" class="w-full p-2 mt-1 bg-white dark:bg-gray-700 rounded-lg border"></div>
+                <div><label for="toman-shaba" class="font-semibold">شماره شبا (بدون IR):</label><input id="toman-shaba" type="text" [(ngModel)]="tomanDepositInfoForm().shabaNumber" class="w-full p-2 mt-1 bg-white dark:bg-gray-700 rounded-lg border"></div>
+                <div><label for="toman-usdt" class="font-semibold">آدرس کیف پول تتر (USDT):</label><input id="toman-usdt" (input)="generateQrCode('qr-admin-toman-usdt', tomanDepositInfoForm().usdtWalletAddress)" type="text" [(ngModel)]="tomanDepositInfoForm().usdtWalletAddress" class="w-full p-2 mt-1 bg-white dark:bg-gray-700 rounded-lg border"></div>
+                <div class="text-center"><canvas id="qr-admin-toman-usdt" class="mx-auto bg-white rounded-lg p-1"></canvas></div>
+                <button (click)="saveTomanDepositInfo()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg">ذخیره اطلاعات تومان</button>
+            </div>
+
+            <!-- Backup and Restore -->
+             <div class="space-y-4 bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg lg-col-span-2">
+                <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">پشتیبان‌گیری و بازیابی</h3>
+                 <div class="flex gap-4">
+                     <button (click)="backupData()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">دریافت فایل پشتیبان</button>
+                     <button (click)="triggerRestore()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg">بازیابی از فایل</button>
+                     <input type="file" id="restoreInput" (change)="onFileSelected($event)" class="hidden" accept=".json">
+                 </div>
+             </div>
+
+            <!-- Deposit Info Settings -->
+            <div class="space-y-4 bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg lg-col-span-2">
+              <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">اطلاعات واریز ارزهای دیجیتال</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                @for (crypto of cryptos(); track crypto.id) {
+                  @if (crypto.id !== 'tether') {
+                    <div class="space-y-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
+                      <h4 class="font-bold text-lg text-gray-900 dark:text-white">{{ crypto.name }} ({{ crypto.symbol }})</h4>
+                      <div><label [for]="crypto.id + '-addr'" class="text-sm font-semibold">آدرس کیف پول:</label><input [id]="crypto.id + '-addr'" (input)="generateQrCode('qr-admin-' + crypto.id, depositInfosForm()[crypto.id]?.walletAddress)" type="text" [(ngModel)]="depositInfosForm()[crypto.id].walletAddress" class="w-full p-1 mt-1 bg-white dark:bg-gray-700 rounded border text-sm"></div>
+                      <div class="text-center"><canvas [id]="'qr-admin-' + crypto.id" class="mx-auto bg-white rounded-lg p-1"></canvas></div>
+                      <button (click)="saveDepositInfo(crypto.id)" class="w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-bold py-2 rounded-lg">ذخیره {{crypto.symbol}}</button>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+
+          </div>
+        }
+      }
+    </main>
+  </div>
+}

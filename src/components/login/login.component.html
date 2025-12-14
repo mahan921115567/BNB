@@ -1,0 +1,113 @@
+
+<div class="flex flex-col space-y-6">
+  <h2 class="text-2xl font-bold text-center text-amber-400">
+    @if (loginStep() === 'credentials') {
+      ورود به حساب کاربری
+    } @else {
+      تایید هویت دو مرحله‌ای
+    }
+  </h2>
+
+  <!-- Step 1: Credentials -->
+  @if (loginStep() === 'credentials') {
+    <form (ngSubmit)="handleLoginStep1()" class="flex flex-col space-y-6 animate-fade-in">
+      <!-- Username Input -->
+      <div class="flex flex-col">
+        <label for="username-login" class="mb-2 font-semibold text-gray-600 dark:text-gray-300">نام کاربری:</label>
+        <input 
+          id="username-login"
+          type="text"
+          [(ngModel)]="username"
+          name="username"
+          required
+          class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition-all"
+          placeholder="نام کاربری خود را وارد کنید">
+      </div>
+
+      <!-- Password Input -->
+      <div class="flex flex-col">
+        <label for="password-login" class="mb-2 font-semibold text-gray-600 dark:text-gray-300">رمز عبور:</label>
+        <input 
+          id="password-login"
+          type="password"
+          [(ngModel)]="password"
+          name="password"
+          required
+          class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition-all"
+          placeholder="رمز عبور خود را وارد کنید">
+      </div>
+
+      <!-- Captcha -->
+      <app-captcha (verified)="onCaptchaVerify($event)"></app-captcha>
+      
+      <!-- Action Button -->
+      <button 
+        type="submit"
+        [disabled]="!username() || !password() || !isCaptchaVerified()"
+        class="w-full py-3 rounded-lg font-bold text-lg text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-amber-400 hover:bg-amber-500 hover:shadow-lg hover:shadow-amber-500/20">
+        ادامه
+      </button>
+    </form>
+    <div class="text-center mt-4">
+      <button (click)="forgotPassword.emit()" class="text-sm text-blue-500 hover:text-blue-400 cursor-pointer">نام کاربری یا رمز عبور خود را فراموش کرده‌اید؟</button>
+    </div>
+  } 
+  
+  <!-- Step 2: 2FA -->
+  @else {
+    <form (ngSubmit)="handleVerifyOtp()" class="flex flex-col space-y-6 animate-fade-in">
+      <div class="bg-amber-400/10 border border-amber-400/30 p-4 rounded-lg text-center">
+        <p class="text-gray-600 dark:text-gray-300 text-sm">کد تایید ۶ رقمی به شماره موبایل شما ارسال شد.</p>
+      </div>
+
+      <div class="flex flex-col">
+        <label for="otp-code" class="mb-2 font-semibold text-gray-600 dark:text-gray-300 text-center">کد تایید:</label>
+        <input 
+          id="otp-code"
+          type="text"
+          [(ngModel)]="otpCode"
+          name="otpCode"
+          required
+          maxlength="6"
+          autocomplete="off"
+          class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-center font-mono text-2xl tracking-[0.5em] focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition-all placeholder:tracking-normal"
+          placeholder="------">
+      </div>
+
+      <button 
+        type="submit"
+        [disabled]="!otpCode() || otpCode().length !== 6"
+        class="w-full py-3 rounded-lg font-bold text-lg text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-amber-400 hover:bg-amber-500">
+        تایید و ورود
+      </button>
+      
+      <button type="button" (click)="loginStep.set('credentials')" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+        بازگشت به مرحله قبل
+      </button>
+    </form>
+  }
+
+  <!-- Status Message -->
+  @if (status(); as s) {
+    <div 
+      class="p-3 rounded-lg text-center font-semibold animate-fade-in"
+      [class.bg-red-500/20]="!s.success"
+      [class.text-red-600]="!s.success"
+      [class.dark:text-red-400]="!s.success">
+      {{ s.message }}
+    </div>
+  }
+
+  <!-- Mock SMS Notification Toast -->
+  @if (mockSmsNotification(); as msg) {
+    <div class="fixed top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border-l-4 border-amber-400 text-gray-800 dark:text-white px-6 py-4 rounded shadow-2xl z-50 animate-fade-in flex items-center gap-3 max-w-sm w-full">
+       <div class="bg-amber-500/20 p-2 rounded-full text-amber-500 dark:text-amber-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+       </div>
+       <div>
+         <p class="font-bold text-sm">پیامک سیستم</p>
+         <p class="text-sm mt-1">{{ msg }}</p>
+       </div>
+    </div>
+  }
+</div>

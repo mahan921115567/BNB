@@ -1,0 +1,188 @@
+
+@if (showLanding()) {
+    <app-landing (start)="enterApp()"></app-landing>
+} @else {
+    @if(isNewUser()) {
+      <app-welcome (dismiss)="dismissWelcome()"></app-welcome>
+    }
+
+    <!-- Notifications are available everywhere when logged in -->
+    <app-notifications></app-notifications>
+
+    <div class="min-h-screen flex flex-col items-center p-4 sm:p-6 font-sans relative overflow-x-hidden">
+      <!-- Ambient Background -->
+      <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+         <div class="absolute -top-[20%] -right-[10%] w-[700px] h-[700px] bg-amber-400/10 rounded-full blur-[120px]"></div>
+         <div class="absolute top-[40%] -left-[10%] w-[600px] h-[600px] bg-amber-400/5 rounded-full blur-[120px]"></div>
+      </div>
+
+      <div class="w-full max-w-4xl mx-auto relative z-10">
+        
+        @if (currentUser()) {
+          <!-- Main App View (Logged In) -->
+          @if (isExpert()) {
+            <app-expert-panel></app-expert-panel>
+          } @else {
+            <!-- Regular User View -->
+            <div>
+              <header class="text-center mb-8 relative">
+                <h1 class="text-3xl sm:text-4xl font-black text-amber-400 drop-shadow-sm font-mono tracking-wider">SARAF</h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">
+                  خوش آمدید، <span class="font-bold text-gray-900 dark:text-white">{{ currentUser()?.username }}</span>
+                </p>
+                <div class="absolute top-0 left-0 flex items-center gap-2">
+                    <button (click)="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 border border-red-500/20 py-1.5 px-4 rounded-2xl text-sm transition-all backdrop-blur-md">
+                      خروج
+                    </button>
+                    <button (click)="themeService.toggleTheme()" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-amber-400 border border-gray-300 dark:border-gray-700 p-1.5 rounded-2xl text-sm transition-all backdrop-blur-md">
+                        @if(themeService.theme() === 'dark') {
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" clip-rule="evenodd" /></svg>
+                        } @else {
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
+                        }
+                    </button>
+                </div>
+              </header>
+
+              <nav class="flex justify-center bg-gray-100 dark:bg-gray-900 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-3xl p-1.5 mb-8 shadow-2xl overflow-x-auto whitespace-nowrap">
+                <button
+                  (click)="setView('prices')"
+                  [class.bg-amber-400/20]="currentView() === 'prices'"
+                  [class.dark:bg-amber-400/10]="currentView() === 'prices'"
+                  [class.text-amber-600]="currentView() === 'prices'"
+                  [class.dark:text-amber-400]="currentView() === 'prices'"
+                  [class.shadow-lg]="currentView() === 'prices'"
+                  class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                  قیمت‌ها
+                </button>
+                <button
+                  (click)="setView('buy')"
+                  [class.bg-amber-400]="currentView() === 'buy'"
+                  [class.text-black]="currentView() === 'buy'"
+                  [class.font-bold]="currentView() === 'buy'"
+                  [class.shadow-lg]="currentView() === 'buy'"
+                  [class.shadow-amber-500/30]="currentView() === 'buy'"
+                  class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mx-1 sm:mx-2">
+                  خرید
+                </button>
+                <button
+                  (click)="setView('sell')"
+                  [class.bg-gray-300]="currentView() === 'sell'"
+                  [class.dark:bg-gray-700]="currentView() === 'sell'"
+                  [class.text-gray-800]="currentView() === 'sell'"
+                  [class.dark:text-gray-200]="currentView() === 'sell'"
+                  [class.shadow-lg]="currentView() === 'sell'"
+                  class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                  فروش
+                </button>
+                <button
+                  (click)="setView('wallet')"
+                  [class.bg-amber-400/20]="currentView() === 'wallet'"
+                  [class.dark:bg-amber-400/10]="currentView() === 'wallet'"
+                  [class.text-amber-600]="currentView() === 'wallet'"
+                  [class.dark:text-amber-400]="currentView() === 'wallet'"
+                  [class.shadow-lg]="currentView() === 'wallet'"
+                  class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mx-1 sm:mx-2">
+                  کیف پول
+                </button>
+                <button
+                  (click)="setView('history')"
+                  [class.bg-amber-400/20]="currentView() === 'history'"
+                  [class.dark:bg-amber-400/10]="currentView() === 'history'"
+                  [class.text-amber-600]="currentView() === 'history'"
+                  [class.dark:text-amber-400]="currentView() === 'history'"
+                  [class.shadow-lg]="currentView() === 'history'"
+                  class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                  تاریخچه
+                </button>
+                <button
+                  (click)="setView('support')"
+                  [class.bg-blue-500/20]="currentView() === 'support'"
+                  [class.dark:bg-blue-400/10]="currentView() === 'support'"
+                  [class.text-blue-600]="currentView() === 'support'"
+                  [class.dark:text-blue-400]="currentView() === 'support'"
+                  [class.shadow-lg]="currentView() === 'support'"
+                  class="relative flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white ml-1 sm:ml-2">
+                  پشتیبانی
+                  @if(unreadSupportMessages() > 0) {
+                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-gray-100 dark:border-gray-900 animate-pulse"></span>
+                  }
+                </button>
+              </nav>
+
+              <main class="bg-gray-50 dark:bg-gray-900 backdrop-blur-2xl border border-gray-200 dark:border-gray-800 p-6 sm:p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-black/5 dark:from-white/5 to-transparent pointer-events-none"></div>
+                <div class="relative z-10">
+                  @switch (currentView()) {
+                    @case ('prices') { <app-price-list></app-price-list> }
+                    @case ('buy') { <app-trade mode="buy"></app-trade> }
+                    @case ('sell') { <app-trade mode="sell"></app-trade> }
+                    @case ('wallet') { <app-wallet></app-wallet> }
+                    @case ('history') { <app-history></app-history> }
+                    @case ('support') { <app-support></app-support> }
+                  }
+                </div>
+              </main>
+              <footer class="text-center mt-8 text-gray-500 text-sm">
+                  <p>© 2024 SARAF Exchange</p>
+              </footer>
+            </div>
+          }
+        } @else {
+          <!-- Auth View (Logged Out) -->
+          <div class="w-full max-w-md mx-auto animate-fade-in">
+             <div class="flex justify-between items-center mb-4">
+                 <button (click)="showLanding.set(true)" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1 text-sm bg-black/5 dark:bg-white/5 px-3 py-1.5 rounded-full border border-black/5 dark:border-white/5 backdrop-blur-sm transition-all">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                     بازگشت به خانه
+                 </button>
+                 <button (click)="themeService.toggleTheme()" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-amber-400 border border-gray-300 dark:border-gray-700 p-2 rounded-full text-sm transition-all backdrop-blur-sm">
+                    @if(themeService.theme() === 'dark') {
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" clip-rule="evenodd" /></svg>
+                    } @else {
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
+                    }
+                </button>
+             </div>
+
+            <header class="text-center mb-8">
+              <h1 class="text-3xl sm:text-4xl font-black text-amber-400 font-mono tracking-wide">SARAF</h1>
+              <p class="text-gray-500 dark:text-gray-400 mt-2">برای شروع وارد شوید یا حساب جدید بسازید</p>
+            </header>
+            
+            @if(authView() !== 'forgot') {
+              <nav class="flex justify-center bg-gray-100 dark:bg-gray-900 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-3xl p-1.5 mb-8 shadow-xl">
+                <button
+                  (click)="setAuthView('login')"
+                  [class.bg-amber-400]="authView() === 'login'"
+                  [class.text-black]="authView() === 'login'"
+                  [class.font-bold]="authView() === 'login'"
+                  [class.shadow-lg]="authView() === 'login'"
+                  [class.shadow-amber-500/20]="authView() === 'login'"
+                  class="flex-1 py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                  ورود
+                </button>
+                <button
+                  (click)="setAuthView('register')"
+                  [class.bg-gray-300]="authView() === 'register'"
+                  [class.dark:bg-gray-700]="authView() === 'register'"
+                  [class.shadow-lg]="authView() === 'register'"
+                  class="flex-1 py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mx-2">
+                  ثبت نام
+                </button>
+              </nav>
+            }
+
+            <main class="bg-gray-50 dark:bg-gray-900/50 backdrop-blur-2xl border border-gray-200 dark:border-gray-800 p-8 rounded-[40px] shadow-2xl">
+              @switch (authView()) {
+                @case ('login') { <app-login (forgotPassword)="setAuthView('forgot')"></app-login> }
+                @case ('register') { <app-register (registerSuccess)="setAuthView('login')"></app-register> }
+                @case ('forgot') { <app-forgot-password (backToLogin)="setAuthView('login')"></app-forgot-password> }
+              }
+            </main>
+          </div>
+        }
+
+      </div>
+    </div>
+}

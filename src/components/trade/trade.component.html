@@ -1,0 +1,107 @@
+
+<div class="flex flex-col space-y-6">
+  <h2 class="text-2xl font-bold text-center">
+    @if (isBuyMode()) {
+      <span class="text-amber-400">خرید ارز دیجیتال</span>
+    } @else {
+      <span class="text-gray-600 dark:text-gray-400">فروش ارز دیجیتال</span>
+    }
+  </h2>
+
+  <!-- Crypto Selector -->
+  <div class="flex flex-col">
+    <label for="crypto-select" class="mb-2 font-semibold text-gray-600 dark:text-gray-300">انتخاب ارز:</label>
+    <select 
+      id="crypto-select"
+      [(ngModel)]="selectedCryptoId"
+      (ngModelChange)="onCryptoChange()"
+      class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none">
+      @for (crypto of cryptos(); track crypto.id) {
+        <option [value]="crypto.id">{{ crypto.name }} ({{ crypto.symbol }})</option>
+      }
+    </select>
+  </div>
+
+  <!-- Amount Input -->
+  <div class="flex flex-col">
+    <label for="amount-input" class="mb-2 font-semibold text-gray-600 dark:text-gray-300">
+      @if (isBuyMode()) {
+        <span>مبلغ (تومان)</span>
+      } @else {
+        <span>مقدار ({{ selectedCrypto()?.symbol }})</span>
+      }
+    </label>
+    <div class="relative">
+       <input 
+        id="amount-input"
+        type="number"
+        [(ngModel)]="tradeAmount"
+        [placeholder]="isBuyMode() ? 'مثلا 1,000,000' : 'مثلا 0.5'"
+        class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white font-mono text-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none pr-20">
+        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
+          @if (isBuyMode()) { تومان } @else { {{ selectedCrypto()?.symbol }} }
+        </span>
+    </div>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 text-left">
+      موجودی: 
+      <span class="font-mono">{{ availableBalance() | number:(isBuyMode() ? '1.0-0' : '1.2-8') }}</span>
+    </p>
+  </div>
+  
+  <!-- Trade Summary -->
+  @if (tradeAmount() && tradeAmount() > 0) {
+    <div class="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg text-center space-y-2">
+      <p class="text-gray-600 dark:text-gray-300">
+        <span>دریافت می‌کنید:</span>
+      </p>
+      <p class="text-2xl font-bold font-mono" [class.text-amber-500]="isBuyMode()" [class.dark:text-amber-400]="isBuyMode()" [class.text-gray-600]="!isBuyMode()" [class.dark:text-gray-400]="!isBuyMode()">
+        {{ tradeResult() | number:(isBuyMode() ? '1.2-8' : '1.0-0') }}
+        <span class="text-lg">
+          @if (isBuyMode()) {
+            {{ selectedCrypto()?.symbol }}
+          } @else {
+            تومان
+          }
+        </span>
+      </p>
+      <p class="text-sm text-gray-500">
+        نرخ لحظه‌ای: ۱ {{ selectedCrypto()?.symbol }} ≈ {{ selectedCrypto()?.price | number:'1.0-0' }} تومان
+      </p>
+    </div>
+  }
+
+  <!-- Action Button -->
+  <button 
+    (click)="handleTrade()"
+    [disabled]="!tradeAmount() || tradeAmount() <= 0"
+    class="w-full py-3 rounded-lg font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+    [class.bg-amber-400]="isBuyMode()"
+    [class.hover:bg-amber-500]="isBuyMode()"
+    [class.text-black]="isBuyMode()"
+    [class.bg-gray-300]="!isBuyMode()"
+    [class.hover:bg-gray-400]="!isBuyMode()"
+    [class.dark:bg-gray-700]="!isBuyMode()"
+    [class.dark:hover:bg-gray-600]="!isBuyMode()"
+    [class.text-gray-800]="!isBuyMode()"
+    [class.dark:text-gray-200]="!isBuyMode()">
+    @if (isBuyMode()) {
+      <span>ثبت درخواست خرید</span>
+    } @else {
+      <span>ثبت درخواست فروش</span>
+    }
+  </button>
+
+  <!-- Transaction Status -->
+  @if (transactionStatus(); as status) {
+    <div 
+      class="p-3 rounded-lg text-center font-semibold"
+      [class.bg-amber-500/20]="status.success"
+      [class.text-amber-600]="status.success"
+      [class.dark:text-amber-400]="status.success"
+      [class.bg-red-500/20]="!status.success"
+      [class.text-red-600]="!status.success"
+      [class.dark:text-red-400]="!status.success">
+      {{ status.message }}
+    </div>
+  }
+</div>
