@@ -1,4 +1,51 @@
 
+@if (showConfirmPinModal()) {
+  @let summary = tradeSummary()
+  @if (summary) {
+    <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4 animate-fade-in" (click)="cancelTrade()">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-gray-900 dark:text-white relative" (click)="$event.stopPropagation()">
+        <h3 class="text-xl font-bold text-center text-amber-500 dark:text-amber-400 mb-4">{{ summary.action }}</h3>
+        
+        <div class="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg mb-6 space-y-3 text-sm">
+          <div class="flex justify-between items-center">
+            <span class="text-gray-600 dark:text-gray-400">{{ summary.payingLabel }}:</span>
+            <span class="font-bold font-mono text-gray-900 dark:text-white">{{ summary.payingValue }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-600 dark:text-gray-400">{{ summary.feeLabel }}:</span>
+            <span class="font-bold font-mono text-red-500 dark:text-red-400">{{ summary.feeValue }}</span>
+          </div>
+          <div class="flex justify-between items-center border-t border-gray-300 dark:border-gray-600 pt-3">
+            <span class="text-gray-600 dark:text-gray-400">{{ summary.receivingLabel }}:</span>
+            <span class="font-bold font-mono text-green-600 dark:text-green-400">{{ summary.receivingValue }}</span>
+          </div>
+           <div class="text-center text-xs text-gray-500 pt-2">نرخ: {{ summary.rate }}</div>
+        </div>
+        
+        <p class="text-sm text-center text-gray-600 dark:text-gray-400 mb-4">برای تایید نهایی، کد ۴ رقمی خود را وارد کنید.</p>
+
+        <div class="flex flex-col space-y-4">
+          <input 
+            type="password"
+            [ngModel]="pinToConfirm()"
+            (ngModelChange)="pinToConfirm.set($event)"
+            maxlength="4"
+            (keyup.enter)="executeTrade()"
+            placeholder="••••"
+            class="w-full text-center text-4xl tracking-[0.5em] p-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none">
+
+          <button (click)="executeTrade()" class="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-3 rounded-lg transition-colors text-lg">
+            تایید و انجام تراکنش
+          </button>
+          @if(confirmPinError()) {
+             <p class="text-red-500 dark:text-red-400 text-center font-semibold animate-pulse text-sm">{{ confirmPinError() }}</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+}
+
 <div class="flex flex-col space-y-6">
   <h2 class="text-2xl font-bold text-center">
     @if (isBuyMode()) {
@@ -11,13 +58,29 @@
   <!-- Crypto Selector -->
   <div class="flex flex-col">
     <label for="crypto-select" class="mb-2 font-semibold text-gray-600 dark:text-gray-300">انتخاب ارز:</label>
+
+    <!-- Search Input -->
+    <div class="relative mb-2">
+      <input 
+        type="text"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="searchTerm.set($event)"
+        placeholder="جستجوی نام یا نماد..."
+        class="w-full p-3 pl-10 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition-all">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+    </div>
+
     <select 
       id="crypto-select"
-      [(ngModel)]="selectedCryptoId"
-      (ngModelChange)="onCryptoChange()"
+      [ngModel]="selectedCryptoId()"
+      (ngModelChange)="selectedCryptoId.set($event); onCryptoChange()"
       class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none">
-      @for (crypto of cryptos(); track crypto.id) {
-        <option [value]="crypto.id">{{ crypto.name }} ({{ crypto.symbol }})</option>
+      @if (filteredCryptos().length === 0) {
+        <option [ngValue]="null" disabled>ارزی یافت نشد</option>
+      } @else {
+        @for (crypto of filteredCryptos(); track crypto.id) {
+          <option [value]="crypto.id">{{ crypto.name }} ({{ crypto.symbol }})</option>
+        }
       }
     </select>
   </div>
@@ -35,9 +98,11 @@
        <input 
         id="amount-input"
         type="number"
-        [(ngModel)]="tradeAmount"
+        [ngModel]="tradeAmount()"
+        (ngModelChange)="tradeAmount.set($event)"
         [placeholder]="isBuyMode() ? 'مثلا 1,000,000' : 'مثلا 0.5'"
-        class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white font-mono text-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none pr-20">
+        [disabled]="filteredCryptos().length === 0"
+        class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white font-mono text-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none pr-20 disabled:opacity-50">
         <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
           @if (isBuyMode()) { تومان } @else { {{ selectedCrypto()?.symbol }} }
         </span>
@@ -49,31 +114,34 @@
   </div>
   
   <!-- Trade Summary -->
-  @if (tradeAmount() && tradeAmount() > 0) {
-    <div class="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg text-center space-y-2">
-      <p class="text-gray-600 dark:text-gray-300">
-        <span>دریافت می‌کنید:</span>
-      </p>
-      <p class="text-2xl font-bold font-mono" [class.text-amber-500]="isBuyMode()" [class.dark:text-amber-400]="isBuyMode()" [class.text-gray-600]="!isBuyMode()" [class.dark:text-gray-400]="!isBuyMode()">
-        {{ tradeResult() | number:(isBuyMode() ? '1.2-8' : '1.0-0') }}
-        <span class="text-lg">
-          @if (isBuyMode()) {
-            {{ selectedCrypto()?.symbol }}
-          } @else {
-            تومان
-          }
-        </span>
-      </p>
-      <p class="text-sm text-gray-500">
-        نرخ لحظه‌ای: ۱ {{ selectedCrypto()?.symbol }} ≈ {{ selectedCrypto()?.price | number:'1.0-0' }} تومان
-      </p>
-    </div>
+  @if (tradeAmount() && tradeAmount()! > 0) {
+    @let crypto = selectedCrypto();
+    @if (crypto) {
+      <div class="bg-gray-100 dark:bg-gray-900/50 p-4 rounded-lg text-center space-y-2">
+        <p class="text-gray-600 dark:text-gray-300">
+          <span>دریافت می‌کنید:</span>
+        </p>
+        <p class="text-2xl font-bold font-mono" [class.text-amber-500]="isBuyMode()" [class.dark:text-amber-400]="isBuyMode()" [class.text-gray-600]="!isBuyMode()" [class.dark:text-gray-400]="!isBuyMode()">
+          {{ tradeResult() | number:(isBuyMode() ? '1.2-8' : '1.0-0') }}
+          <span class="text-lg">
+            @if (isBuyMode()) {
+              {{ crypto.symbol }}
+            } @else {
+              تومان
+            }
+          </span>
+        </p>
+        <p class="text-sm text-gray-500">
+          نرخ @if(isBuyMode()){ خرید }@else{ فروش }: ۱ {{ crypto.symbol }} ≈ {{ (crypto.price * (isBuyMode() ? 1.01 : 0.99)) | number:'1.0-0' }} تومان
+        </p>
+      </div>
+    }
   }
 
   <!-- Action Button -->
   <button 
     (click)="handleTrade()"
-    [disabled]="!tradeAmount() || tradeAmount() <= 0"
+    [disabled]="!tradeAmount() || tradeAmount()! <= 0 || filteredCryptos().length === 0"
     class="w-full py-3 rounded-lg font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
     [class.bg-amber-400]="isBuyMode()"
     [class.hover:bg-amber-500]="isBuyMode()"
@@ -92,9 +160,10 @@
   </button>
 
   <!-- Transaction Status -->
-  @if (transactionStatus(); as status) {
+  @let status = transactionStatus()
+  @if (status) {
     <div 
-      class="p-3 rounded-lg text-center font-semibold"
+      class="p-3 rounded-lg text-center font-semibold animate-fade-in"
       [class.bg-amber-500/20]="status.success"
       [class.text-amber-600]="status.success"
       [class.dark:text-amber-400]="status.success"

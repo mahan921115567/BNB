@@ -1,5 +1,4 @@
-
-import { Component, ChangeDetectionStrategy, input, ViewChild, ElementRef, afterNextRender, effect, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, ViewChild, ElementRef, afterNextRender, effect, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as d3 from 'd3';
 import { WalletAsset } from '../../models/crypto.model';
@@ -39,6 +38,32 @@ export class PortfolioChartComponent {
     '#a3a3a3'  // neutral-400 for Toman
   ];
   
+  legendData = computed(() => {
+    const assets = this.assets();
+    const irtBalance = this.irtBalance();
+    const totalValue = this.totalValue();
+    if (totalValue === 0) return [];
+
+    const chartData: { label: string, value: number, symbol: string, color: string }[] = [];
+
+    const colorScale = d3.scaleOrdinal<string>()
+      .domain([...assets.map(a => a.name), 'Toman'])
+      .range(this.colors);
+
+    if (irtBalance > 0) {
+      chartData.push({ label: 'Toman', value: irtBalance, symbol: 'IRT', color: colorScale('Toman') });
+    }
+
+    assets.forEach(asset => {
+      if (asset.valueIrt > 0) {
+        chartData.push({ label: asset.name, value: asset.valueIrt, symbol: asset.symbol, color: colorScale(asset.name) });
+      }
+    });
+
+    return chartData.map(d => ({ ...d, percentage: (d.value / totalValue) * 100 }))
+      .sort((a, b) => b.value - a.value);
+  });
+
   constructor() {
     afterNextRender(() => {
         this.renderChart();
@@ -156,31 +181,5 @@ export class PortfolioChartComponent {
        .duration(1000)
        .delay(500)
        .style('opacity', 1);
-  }
-
-  getLegendData = () => {
-     const assets = this.assets();
-     const irtBalance = this.irtBalance();
-     const totalValue = this.totalValue();
-     if(totalValue === 0) return [];
-     
-     const chartData: { label: string, value: number, symbol: string, color: string }[] = [];
-    
-     const colorScale = d3.scaleOrdinal<string>()
-      .domain([...assets.map(a => a.name), 'Toman'])
-      .range(this.colors);
-
-     if (irtBalance > 0) {
-         chartData.push({ label: 'Toman', value: irtBalance, symbol: 'IRT', color: colorScale('Toman') });
-     }
-     
-     assets.forEach(asset => {
-         if (asset.valueIrt > 0) {
-             chartData.push({ label: asset.name, value: asset.valueIrt, symbol: asset.symbol, color: colorScale(asset.name) });
-         }
-     });
-
-     return chartData.map(d => ({...d, percentage: (d.value / totalValue) * 100}))
-       .sort((a,b) => b.value - a.value);
   }
 }

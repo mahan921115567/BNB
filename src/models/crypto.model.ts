@@ -4,6 +4,7 @@ export interface Cryptocurrency {
   name: string;
   symbol: string;
   price: number; // in IRT (Toman)
+  priceUsd?: number;
   change24h?: number; // Percentage change in 24h
   logo: string; // SVG string
 }
@@ -29,6 +30,7 @@ export interface Transaction {
   timestamp: number;
   status: 'pending' | 'approved' | 'rejected';
   destinationAddress?: string; // Address for withdrawal
+  fee?: number; // For withdrawal fees, in crypto amount
 }
 
 export interface DepositRequest {
@@ -37,8 +39,7 @@ export interface DepositRequest {
   type: 'deposit';
   cryptoId: string;
   cryptoAmount: number;
-  txHash?: string;
-  receiptImageUrl: string; // base64 encoded image
+  txHash: string;
   timestamp: number;
   status: 'pending' | 'approved' | 'rejected';
 }
@@ -49,7 +50,7 @@ export interface TomanRequest {
   type: 'toman_deposit' | 'toman_withdraw';
   amount: number; // in IRT
   shabaNumber?: string; // for withdrawal
-  receiptImageUrl?: string; // for deposit, base64
+  trackingCode?: string; // for deposit, a unique code for manual verification
   timestamp: number;
   status: 'pending' | 'approved' | 'rejected';
 }
@@ -59,18 +60,25 @@ export interface DepositInfo {
   cardNumber: string;
   shabaNumber: string;
   walletAddress: string;
+  minDeposit?: number;
 }
 
 export interface TomanDepositInfo {
   cardNumber: string;
   shabaNumber: string;
   usdtWalletAddress: string;
+  minDeposit?: number;
+  maxWithdraw?: number;
 }
 
 export interface ExchangeConfig {
-  priceMode: 'manual' | 'auto'; // 'manual' sets fixed USDT price, 'auto' fetches from API (simulated)
+  priceMode: 'manual' | 'auto'; // 'manual' sets fixed USDT price, 'auto' fetches from API
   manualUsdtPrice: number;
+  usdtPriceApiUrl?: string; // URL for fetching USDT price in 'auto' mode
   expertPin?: string; // Encrypted or plain PIN for expert lock
+  expertTelegramId?: string;
+  buyFeePercent: number;
+  sellFeePercent: number;
 }
 
 export interface RecoveryRequest {

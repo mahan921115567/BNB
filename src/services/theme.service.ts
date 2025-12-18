@@ -1,5 +1,5 @@
 
-import { Injectable, signal, effect, PLATFORM_ID, inject } from '@angular/core';
+import { Injectable, signal, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
 export type Theme = 'light' | 'dark';
@@ -10,30 +10,29 @@ export type Theme = 'light' | 'dark';
 export class ThemeService {
   private platformId = inject(PLATFORM_ID);
   
-  theme = signal<Theme>('dark');
+  theme = signal<Theme>('light');
 
   constructor() {
-    if (isPlatformBrowser(this.platformId)) {
-      const storedTheme = localStorage.getItem('saraf_theme') as Theme;
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initialTheme = storedTheme ?? (prefersDark ? 'dark' : 'light');
-      this.theme.set(initialTheme);
-    }
+    this.theme.set(this.getInitialThemeFromDom());
+  }
 
-    effect(() => {
-      const currentTheme = this.theme();
-      if (isPlatformBrowser(this.platformId)) {
-        localStorage.setItem('saraf_theme', currentTheme);
-        if (currentTheme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      }
-    });
+  private getInitialThemeFromDom(): Theme {
+    if (isPlatformBrowser(this.platformId)) {
+      // The inline script in index.html has already set the class. We just sync the signal with it.
+      return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    }
+    return 'light'; // Fallback for SSR
   }
 
   toggleTheme() {
-    this.theme.update(current => current === 'dark' ? 'light' : 'dark');
+    if (isPlatformBrowser(this.platformId)) {
+      // Toggle the class and get the new state
+      const isDark = document.documentElement.classList.toggle('dark');
+      
+      // Update signal and localStorage based on the new DOM state
+      const newTheme = isDark ? 'dark' : 'light';
+      this.theme.set(newTheme);
+      localStorage.setItem('nevex_theme', newTheme);
+    }
   }
 }

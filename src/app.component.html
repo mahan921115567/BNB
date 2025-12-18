@@ -1,4 +1,6 @@
 
+<app-floating-support-chat></app-floating-support-chat>
+
 @if (showLanding()) {
     <app-landing (start)="enterApp()"></app-landing>
 } @else {
@@ -9,7 +11,7 @@
     <!-- Notifications are available everywhere when logged in -->
     <app-notifications></app-notifications>
 
-    <div class="min-h-screen flex flex-col items-center p-4 sm:p-6 font-sans relative overflow-x-hidden">
+    <div class="min-h-screen flex flex-col items-center p-4 sm:p-6 font-sans relative overflow-x-hidden" [class.justify-center]="!currentUser()">
       <!-- Ambient Background -->
       <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
          <div class="absolute -top-[20%] -right-[10%] w-[700px] h-[700px] bg-amber-400/10 rounded-full blur-[120px]"></div>
@@ -24,9 +26,9 @@
             <app-expert-panel></app-expert-panel>
           } @else {
             <!-- Regular User View -->
-            <div>
+            <div class="pb-24 sm:pb-0">
               <header class="text-center mb-8 relative">
-                <h1 class="text-3xl sm:text-4xl font-black text-amber-400 drop-shadow-sm font-mono tracking-wider">SARAF</h1>
+                <h1 class="text-3xl sm:text-4xl font-black text-amber-400 drop-shadow-sm font-mono tracking-wider">NEVEX</h1>
                 <p class="text-gray-500 dark:text-gray-400 mt-2">
                   خوش آمدید، <span class="font-bold text-gray-900 dark:text-white">{{ currentUser()?.username }}</span>
                 </p>
@@ -34,24 +36,17 @@
                     <button (click)="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 border border-red-500/20 py-1.5 px-4 rounded-2xl text-sm transition-all backdrop-blur-md">
                       خروج
                     </button>
-                    <button (click)="themeService.toggleTheme()" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-amber-400 border border-gray-300 dark:border-gray-700 p-1.5 rounded-2xl text-sm transition-all backdrop-blur-md">
-                        @if(themeService.theme() === 'dark') {
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" clip-rule="evenodd" /></svg>
-                        } @else {
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
-                        }
-                    </button>
                 </div>
               </header>
 
-              <nav class="flex justify-center bg-gray-100 dark:bg-gray-900 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-3xl p-1.5 mb-8 shadow-2xl overflow-x-auto whitespace-nowrap">
+              <!-- Desktop Navigation -->
+              <nav class="hidden sm:flex justify-center bg-gray-100 dark:bg-gray-900 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-3xl p-1.5 mb-8 shadow-2xl">
                 <button
                   (click)="setView('prices')"
                   [class.bg-amber-400/20]="currentView() === 'prices'"
                   [class.dark:bg-amber-400/10]="currentView() === 'prices'"
                   [class.text-amber-600]="currentView() === 'prices'"
                   [class.dark:text-amber-400]="currentView() === 'prices'"
-                  [class.shadow-lg]="currentView() === 'prices'"
                   class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                   قیمت‌ها
                 </button>
@@ -59,8 +54,6 @@
                   (click)="setView('buy')"
                   [class.bg-amber-400]="currentView() === 'buy'"
                   [class.text-black]="currentView() === 'buy'"
-                  [class.font-bold]="currentView() === 'buy'"
-                  [class.shadow-lg]="currentView() === 'buy'"
                   [class.shadow-amber-500/30]="currentView() === 'buy'"
                   class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mx-1 sm:mx-2">
                   خرید
@@ -69,9 +62,6 @@
                   (click)="setView('sell')"
                   [class.bg-gray-300]="currentView() === 'sell'"
                   [class.dark:bg-gray-700]="currentView() === 'sell'"
-                  [class.text-gray-800]="currentView() === 'sell'"
-                  [class.dark:text-gray-200]="currentView() === 'sell'"
-                  [class.shadow-lg]="currentView() === 'sell'"
                   class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                   فروش
                 </button>
@@ -81,7 +71,6 @@
                   [class.dark:bg-amber-400/10]="currentView() === 'wallet'"
                   [class.text-amber-600]="currentView() === 'wallet'"
                   [class.dark:text-amber-400]="currentView() === 'wallet'"
-                  [class.shadow-lg]="currentView() === 'wallet'"
                   class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mx-1 sm:mx-2">
                   کیف پول
                 </button>
@@ -91,7 +80,6 @@
                   [class.dark:bg-amber-400/10]="currentView() === 'history'"
                   [class.text-amber-600]="currentView() === 'history'"
                   [class.dark:text-amber-400]="currentView() === 'history'"
-                  [class.shadow-lg]="currentView() === 'history'"
                   class="flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                   تاریخچه
                 </button>
@@ -101,16 +89,15 @@
                   [class.dark:bg-blue-400/10]="currentView() === 'support'"
                   [class.text-blue-600]="currentView() === 'support'"
                   [class.dark:text-blue-400]="currentView() === 'support'"
-                  [class.shadow-lg]="currentView() === 'support'"
                   class="relative flex-1 min-w-[80px] py-3 px-4 rounded-2xl text-center font-semibold transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white ml-1 sm:ml-2">
                   پشتیبانی
                   @if(unreadSupportMessages() > 0) {
-                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-gray-100 dark:border-gray-900 animate-pulse"></span>
+                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-gray-100 dark:border-gray-900 animate-bounce"></span>
                   }
                 </button>
               </nav>
 
-              <main class="bg-gray-50 dark:bg-gray-900 backdrop-blur-2xl border border-gray-200 dark:border-gray-800 p-6 sm:p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
+              <main class="bg-gray-50 dark:bg-gray-900 backdrop-blur-2xl border border-gray-200 dark:border-gray-800 p-6 sm:p-8 rounded-[40px] shadow-2xl relative overflow-hidden max-h-[70vh] sm:max-h-none overflow-y-auto">
                 <div class="absolute inset-0 bg-gradient-to-br from-black/5 dark:from-white/5 to-transparent pointer-events-none"></div>
                 <div class="relative z-10">
                   @switch (currentView()) {
@@ -123,30 +110,49 @@
                   }
                 </div>
               </main>
-              <footer class="text-center mt-8 text-gray-500 text-sm">
-                  <p>© 2024 SARAF Exchange</p>
+              <footer class="text-center mt-8 text-gray-500 text-sm hidden sm:block">
+                  <p>© 2024 NEVEX Exchange</p>
               </footer>
+
+              <!-- Mobile Bottom Tab Bar -->
+              <nav class="sm:hidden fixed bottom-4 left-4 right-4 bg-gray-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-1 shadow-2xl grid grid-cols-5 justify-around items-center z-40">
+                <button (click)="setView('prices')" class="flex flex-col items-center justify-center h-14 flex-1 rounded-2xl transition-all" [class.bg-amber-400/20]="currentView() === 'prices'">
+                  <svg class="w-5 h-5 mb-1" [class.text-amber-400]="currentView() === 'prices'" [class.text-gray-400]="currentView() !== 'prices'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                  <span class="text-xs" [class.text-amber-400]="currentView() === 'prices'" [class.text-gray-400]="currentView() !== 'prices'">قیمت</span>
+                </button>
+                <button (click)="setView('buy')" class="flex flex-col items-center justify-center h-14 flex-1 rounded-2xl transition-all" [class.bg-green-400/20]="currentView() === 'buy'">
+                  <svg class="w-6 h-6 mb-0.5" [class.text-green-400]="currentView() === 'buy'" [class.text-gray-400]="currentView() !== 'buy'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span class="text-xs" [class.text-green-400]="currentView() === 'buy'" [class.text-gray-400]="currentView() !== 'buy'">خرید</span>
+                </button>
+                <button (click)="setView('sell')" class="flex flex-col items-center justify-center h-14 flex-1 rounded-2xl transition-all" [class.bg-red-400/20]="currentView() === 'sell'">
+                    <svg class="w-6 h-6 mb-0.5" [class.text-red-400]="currentView() === 'sell'" [class.text-gray-400]="currentView() !== 'sell'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <span class="text-xs" [class.text-red-400]="currentView() === 'sell'" [class.text-gray-400]="currentView() !== 'sell'">فروش</span>
+                </button>
+                <button (click)="setView('wallet')" class="flex flex-col items-center justify-center h-14 flex-1 rounded-2xl transition-all" [class.bg-amber-400/20]="currentView() === 'wallet'">
+                  <svg class="w-5 h-5 mb-1" [class.text-amber-400]="currentView() === 'wallet'" [class.text-gray-400]="currentView() !== 'wallet'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                  <span class="text-xs" [class.text-amber-400]="currentView() === 'wallet'" [class.text-gray-400]="currentView() !== 'wallet'">کیف پول</span>
+                </button>
+                <button (click)="setView('history')" class="flex flex-col items-center justify-center h-14 flex-1 rounded-2xl transition-all" [class.bg-amber-400/20]="currentView() === 'history'">
+                  <svg class="w-5 h-5 mb-1" [class.text-amber-400]="currentView() === 'history'" [class.text-gray-400]="currentView() !== 'history'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                  <span class="text-xs" [class.text-amber-400]="currentView() === 'history'" [class.text-gray-400]="currentView() !== 'history'">تاریخچه</span>
+                </button>
+              </nav>
+
             </div>
           }
         } @else {
           <!-- Auth View (Logged Out) -->
           <div class="w-full max-w-md mx-auto animate-fade-in">
-             <div class="flex justify-between items-center mb-4">
-                 <button (click)="showLanding.set(true)" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1 text-sm bg-black/5 dark:bg-white/5 px-3 py-1.5 rounded-full border border-black/5 dark:border-white/5 backdrop-blur-sm transition-all">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                     بازگشت به خانه
-                 </button>
-                 <button (click)="themeService.toggleTheme()" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-amber-400 border border-gray-300 dark:border-gray-700 p-2 rounded-full text-sm transition-all backdrop-blur-sm">
-                    @if(themeService.theme() === 'dark') {
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" clip-rule="evenodd" /></svg>
-                    } @else {
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
-                    }
-                </button>
-             </div>
 
+            @let message = logoutMessage();
+            @if(message) {
+              <div class="mb-6 p-4 bg-amber-400/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold text-center rounded-xl animate-fade-in">
+                {{ message }}
+              </div>
+            }
+            
             <header class="text-center mb-8">
-              <h1 class="text-3xl sm:text-4xl font-black text-amber-400 font-mono tracking-wide">SARAF</h1>
+              <h1 class="text-3xl sm:text-4xl font-black text-amber-400 font-mono tracking-wide">NEVEX</h1>
               <p class="text-gray-500 dark:text-gray-400 mt-2">برای شروع وارد شوید یا حساب جدید بسازید</p>
             </header>
             

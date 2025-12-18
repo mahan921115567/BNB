@@ -1,24 +1,29 @@
 
 import { Injectable, signal, inject, effect, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Cryptocurrency, Wallet, Transaction, DepositInfo, DepositRequest, HistoryItem, TomanRequest, TomanDepositInfo, ExchangeConfig, SystemBackup, RecoveryRequest } from '../models/crypto.model';
+import { Cryptocurrency, Wallet, Transaction, DepositInfo, DepositRequest, HistoryItem, TomanRequest, TomanDepositInfo, ExchangeConfig, SystemBackup, RecoveryRequest, WalletAsset } from '../models/crypto.model';
 import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
-import { map, catchError, of, Observable } from 'rxjs';
+import { map, catchError, of, Observable, firstValueFrom } from 'rxjs';
 import { User } from '../models/user.model';
 
+// Interface for CoinGecko API
 interface CoinGeckoPriceResponse {
-  [id: string]: {
+  [key: string]: {
     usd: number;
-    usd_24h_change?: number;
+    usd_24h_change: number;
   };
 }
+interface CoinGeckoHistoryResponse {
+  prices: [number, number][]; // [timestamp, price]
+}
+
 
 @Injectable({
   providedIn: 'root',
 })
 export class CryptoService {
-  private http = inject(HttpClient);
+  private http: HttpClient = inject(HttpClient);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
 
@@ -31,33 +36,37 @@ export class CryptoService {
   private readonly DEPOSIT_INFO_KEY = 'crypto_deposit_info';
   private readonly TOMAN_DEPOSIT_INFO_KEY = 'crypto_toman_deposit_info';
   private readonly EXCHANGE_CONFIG_KEY = 'crypto_exchange_config';
-  private readonly COINGECKO_API_URL = 'https://api.coingecko.com/api/v3/simple/price';
+  private readonly CRYPTO_LIST_KEY = 'saraf_crypto_list';
+  private readonly COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
+  // A CORS Proxy is required for making API calls from the browser.
+  private readonly CORS_PROXY_URL = 'https://corsproxy.io/?';
 
-  private initialCryptos: Cryptocurrency[] = [
-    { id: 'bitcoin', name: 'بیت‌کوین', symbol: 'BTC', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-yellow-500"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM11.163 6.513c.257-.13.543-.196.837-.196.319 0 .628.077.915.228.287.15.539.368.75.638.21.27.37.585.474.933.104.347.156.728.156 1.139 0 .408-.052.784-.156 1.129a2.768 2.768 0 0 1-.475.923c-.21.27-.462.488-.75.658-.287.17-.596.254-.915.254-.294 0-.58-.066-.837-.196a2.404 2.404 0 0 1-.72-2.996c.203-.687.632-1.129 1.287-1.328Zm2.106 7.279c-.267.14-.562.21-.885.21-.347 0-.676-.08-.988-.24a1.849 1.849 0 0 1-.729-.68c-.183-.293-.308-.635-.372-1.028H8.25c.074.66.29 1.225.65 1.695.36.47.817.83 1.372 1.082.555.252 1.154.378 1.797.378.418 0 .82-.055 1.204-.165s.72-.28 1.004-.51c.284-.23.508-.523.67-.878.163-.355.244-.77.244-1.242 0-.312-.04-.61-.12-.894a2.23 2.23 0 0 0-.39-.785 3.39 3.39 0 0 0-.64- M11.233 8.01c-.49.17-.82.578-.99 1.224-.17.646.01 1.15.54 1.51.53.36 1.17.39 1.92.09.49-.2.82-.579.99-1.129.17-.55-.02-1.02-.56-1.41-.54-.39-1.21-.42-1.9-.285Z" /></svg>', },
+
+  private defaultCryptos: Cryptocurrency[] = [
+    { id: 'bitcoin', name: 'بیت‌کوین', symbol: 'BTC', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-yellow-500"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM11.163 6.513c.257-.13.543-.196.837-.196.319 0 .628.077.915.228.287.15.539.368.75.638.21.27.37.585.474.933.104.347.156.728.156 1.139 0 .408-.052.784-.156 1.129a2.768 2.768 0 0 1-.475.923c-.21.27-.462.488-.75.658-.287.17-.596.254-.915.254-.294 0-.58-.066-.837-.196a2.404 2.404 0 0 1-.72-2.996c.203-.687.632-1.129 1.287-1.328Zm2.106 7.279c-.267.14-.562.21-.885.21-.347 0-.676-.08-.988-.24a1.849 1.849 0 0 1-.729-.68c-.183-.293-.308-.635-.372-1.028H8.25c.074.66.29 1.225.65 1.695.36.47.817.83 1.372 1.082.555.252 1.154.378 1.797.378.418 0 .82-.055 1.204-.165s.72-.28 1.004-.51c.284-.23.508-.523.67-.878.163-.355.244-.77.244-1.242 0-.312-.04-.61-.12-.894a2.23 2.23 0 0 0-.39-.785 3.39 3.39 0 0 0-.64M11.233 8.01c-.49.17-.82.578-.99 1.224-.17.646.01 1.15.54 1.51.53.36 1.17.39 1.92.09.49-.2.82-.579.99-1.129.17-.55-.02-1.02-.56-1.41-.54-.39-1.21-.42-1.9-.285Z" /></svg>', },
     { id: 'ethereum', name: 'اتریوم', symbol: 'ETH', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-indigo-400"><path fill-rule="evenodd" d="M12 1.5a.75.75 0 0 1 .75.75v6.94l3.13-1.807a.75.75 0 0 1 .75 1.3l-4 2.309a.75.75 0 0 1-.75 0l-4-2.309a.75.75 0 1 1 .75-1.3l3.13 1.807V2.25A.75.75 0 0 1 12 1.5Zm-4.25 9.612 4 2.309a.75.75 0 0 1 0 1.3l-4 2.309a.75.75 0 1 1-.75-1.3L11.25 14l-3.13-1.807a.75.75 0 0 1 .75-1.3ZM12.75 12.112l3.13 1.807-3.13 1.807.001-3.614Z" clip-rule="evenodd" /></svg>', },
     { id: 'tether', name: 'تتر', symbol: 'USDT', price: 60000, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-green-500"><path d="M12 2.25a.75.75 0 0 1 .75.75v6h3.75a.75.75 0 0 1 0 1.5H12.75v6a.75.75 0 0 1-1.5 0V10.5H7.5a.75.75 0 0 1 0-1.5h3.75V3a.75.75 0 0 1 .75-.75Z" /><path fill-rule="evenodd" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0 1.5c5.798 0 10.5-4.702 10.5-10.5S17.798 1.5 12 1.5 1.5 6.202 1.5 12 6.202 22.5 12 22.5Z" clip-rule="evenodd" /></svg>', },
-    { id: 'cardano', name: 'کاردانو', symbol: 'ADA', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-blue-500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.15 6.4c.1.09.15.22.15.36v6.48c0 .14-.05.27-.15.36l-3.15 2.7-3.15-2.7c-.1-.09-.15-.22-.15-.36V8.76c0-.14.05-.27.15-.36l3.15-2.7 3.15 2.7zm-3.15.9L9.75 11.4v3.2l2.25 1.95 2.25-1.95v-3.2L12 9.3z"/></svg>' },
+    { id: 'cardano', name: 'کاردانو', symbol: 'ADA', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-blue-500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.15 6.4c.1.09.15.22.15.36v6.48c0 .14-.05.27-.15.36l-3.15 2.7-3.15-2.7c-.1-.09-.15-.22-.15-.36V8.76c0-.14.05.27.15-.36l3.15-2.7 3.15 2.7zm-3.15.9L9.75 11.4v3.2l2.25 1.95 2.25-1.95v-3.2L12 9.3z"/></svg>' },
     { id: 'solana', name: 'سولانا', symbol: 'SOL', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-purple-400"><path d="M4 18h16v-2H4v2zm0-5h16v-2H4v2zm0-5h16V6H4v2z"/></svg>' },
     { id: 'dogecoin', name: 'دوج‌کوین', symbol: 'DOGE', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-yellow-600"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm-4.33-4.33c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41zm8.66 0c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41z"/></svg>' },
     { id: 'ripple', name: 'ریپل', symbol: 'XRP', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-blue-300"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.5 4.5l6 3-6 3-1.5-3-3 1.5 4.5 4.5 6-3-6-3-1.5 3 3-1.5-4.5-4.5z"/></svg>' },
     { id: 'aptos', name: 'آپتوس', symbol: 'APT', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-gray-300"><path d="M12 2L2 7l10 5 10-5L12 2zm-10 7l10 5v7l-10-5v-7zm20 0l-10 5v7l10-5v-7z"/></svg>' },
     { id: 'optimism', name: 'آپتیمیزم', symbol: 'OP', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-red-500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>' },
-    { id: 'sei', name: 'سِی', symbol: 'SEI', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-red-400"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-1 14l-3-3 1.41-1.41L11 13.17l4.59-4.58L17 10l-6 6z"/></svg>' },
-    { id: 'chainlink', name: 'چین‌لینک', symbol: 'LINK', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-blue-600"><path d="M9.01 14H12v2H9.01v3L5 15l4.01-4v3zm5.98-4H12V8h2.99V5L19 9l-4.01 4V9zM16 14.01V12h-2v2.01h-3L15 19l4-4.01h-3zM8 9.99V12h2V9.99h3L9 5l-4 4.99h3z"/></svg>' },
+    { id: 'sei-network', name: 'سِی', symbol: 'SEI', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-red-400"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-1 14l-3-3 1.41-1.41L11 13.17l4.59-4.58L17 10l-6 6z"/></svg>' },
+    { id: 'chainlink', name: 'چین‌لینک', symbol: 'LINK', price: 0, change24h: 0, logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-blue-600"><path d="M9.01 14H12v2H9.01v3L5 15l4.01-4v3zm5.98-4H12V8h2.99V5L19 9l-4.01 4V9zM16 14.01V12h-2v2.01h-3L15 19l4-4.01h-3zM8 9.99V12h2V9.99h3L9 5l-4 4.99h3z"/></svg>', },
   ];
 
   // Signals
-  cryptos = signal<Cryptocurrency[]>(this.initialCryptos);
+  cryptos = signal<Cryptocurrency[]>([]);
   wallet = signal<Wallet | null>(null);
   allTransactions = signal<Transaction[]>([]);
   allDepositRequests = signal<DepositRequest[]>([]);
   allTomanRequests = signal<TomanRequest[]>([]);
   allRecoveryRequests = signal<RecoveryRequest[]>([]);
   depositInfo = signal<{ [key: string]: DepositInfo }>({});
-  tomanDepositInfo = signal<TomanDepositInfo>({ cardNumber: '', shabaNumber: '', usdtWalletAddress: '' });
+  tomanDepositInfo = signal<TomanDepositInfo>({ cardNumber: '', shabaNumber: '', usdtWalletAddress: '', minDeposit: 0, maxWithdraw: 0 });
   
-  exchangeConfig = signal<ExchangeConfig>({ priceMode: 'manual', manualUsdtPrice: 60000 });
+  exchangeConfig = signal<ExchangeConfig>({ priceMode: 'manual', manualUsdtPrice: 60000, expertTelegramId: '', buyFeePercent: 1.5, sellFeePercent: 1.5 });
 
   // Computed signal for the current user's history
   userHistory = computed<HistoryItem[]>(() => {
@@ -71,6 +80,7 @@ export class CryptoService {
   });
 
   constructor() {
+    this.loadCryptos();
     this.loadExchangeConfig();
     this.loadAllTransactions();
     this.loadAllDepositRequests();
@@ -79,18 +89,149 @@ export class CryptoService {
     this.loadDepositInfo();
     this.loadTomanDepositInfo();
     this.setupUserWalletEffect();
-    this.fetchPrices();
-    setInterval(() => this.fetchPrices(), 60000); // Check every minute
+    // Defer the initial async price fetch to prevent blocking the constructor
+    Promise.resolve().then(() => this.fetchPrices());
+    setInterval(() => this.fetchPrices(), 300000); // Check every 5 minutes
   }
+  
+  private loadCryptos() {
+    try {
+      const stored = localStorage.getItem(this.CRYPTO_LIST_KEY);
+      if (stored) {
+        const cryptosFromStorage = JSON.parse(stored).map((c: any) => ({
+          ...c,
+          price: 0, priceUsd: 0, change24h: 0,
+        }));
+        this.cryptos.set(cryptosFromStorage);
+      } else {
+        this.cryptos.set(this.defaultCryptos);
+        this.saveCryptos();
+      }
+    } catch(e) {
+      console.error('Failed to load crypto list', e);
+      this.cryptos.set(this.defaultCryptos);
+    }
+  }
+
+  private saveCryptos() {
+    const listToSave = this.cryptos().map(({ price, priceUsd, change24h, ...rest }) => rest);
+    localStorage.setItem(this.CRYPTO_LIST_KEY, JSON.stringify(listToSave));
+  }
+  
+  addCryptocurrency(newCryptoData: Omit<Cryptocurrency, 'price' | 'priceUsd' | 'change24h'>): { success: boolean, message: string } {
+    const id = (newCryptoData.id || '').toLowerCase().trim();
+    const symbol = (newCryptoData.symbol || '').toUpperCase().trim();
+    const name = (newCryptoData.name || '').trim();
+    const logo = (newCryptoData.logo || '').trim();
+
+    if (!id || !symbol || !name || !logo) {
+        return { success: false, message: 'تمام فیلدها باید پر شوند.' };
+    }
+      
+    const currentList = this.cryptos();
+    if (currentList.some(c => c.id === id || c.symbol.toUpperCase() === symbol)) {
+      return { success: false, message: 'شناسه یا نماد ارز تکراری است.' };
+    }
+
+    const newCrypto: Cryptocurrency = {
+      ...newCryptoData,
+      id,
+      symbol,
+      name,
+      logo,
+      price: 0,
+      priceUsd: 0,
+      change24h: 0,
+    };
+
+    this.cryptos.update(list => [...list, newCrypto]);
+    this.saveCryptos();
+
+    // Also update deposit info with a blank entry for the new crypto
+    this.depositInfo.update(current => ({ ...current, [newCrypto.id]: { cardNumber: '', shabaNumber: '', walletAddress: '', minDeposit: 0 } }));
+    this.saveDepositInfo();
+    
+    this.fetchPrices(); // Fetch prices to get data for the new coin
+    return { success: true, message: `ارز ${newCrypto.name} با موفقیت اضافه شد.` };
+  }
+
+  deleteCryptocurrency(cryptoId: string): { success: boolean, message: string } {
+    if (cryptoId === 'tether') {
+        return { success: false, message: 'ارز تتر (USDT) قابل حذف نیست.' };
+    }
+
+    const currentCryptos = this.cryptos();
+    if (!currentCryptos.some(c => c.id === cryptoId)) {
+        return { success: false, message: 'ارز مورد نظر یافت نشد.' };
+    }
+
+    // 1. Update the main crypto list
+    const updatedCryptos = currentCryptos.filter(c => c.id !== cryptoId);
+    this.cryptos.set(updatedCryptos);
+    this.saveCryptos();
+
+    // 2. Update deposit info
+    this.depositInfo.update(currentInfo => {
+        const newInfo = { ...currentInfo };
+        delete newInfo[cryptoId];
+        return newInfo;
+    });
+    this.saveDepositInfo();
+    
+    // 3. Remove the asset from all user wallets
+    const allUsers = this.authService.getUsers();
+    allUsers.forEach(user => {
+        const walletKey = `${this.WALLET_KEY_PREFIX}${user.username}`;
+        const storedWallet = localStorage.getItem(walletKey);
+        if (storedWallet) {
+            try {
+                let userWallet: Wallet = JSON.parse(storedWallet);
+                const assetIndex = userWallet.assets.findIndex(a => a.cryptoId === cryptoId);
+
+                if (assetIndex > -1) {
+                    userWallet.assets.splice(assetIndex, 1);
+                    this.saveWalletState(user.username, userWallet);
+                }
+            } catch (e) {
+                console.error(`Failed to update wallet for user ${user.username} during crypto deletion`, e);
+            }
+        }
+    });
+    
+    // Also update current user's wallet if they are logged in.
+    const currentUser = this.authService.currentUser();
+    if (currentUser && this.wallet()) {
+        this.wallet.update(w => {
+            if (!w) return null;
+            const newAssets = w.assets.filter(a => a.cryptoId !== cryptoId);
+            return { ...w, assets: newAssets };
+        });
+    }
+
+    return { success: true, message: 'ارز با موفقیت حذف شد.' };
+  }
+
 
   // --- Exchange Configuration ---
   private loadExchangeConfig() {
     try {
       const stored = localStorage.getItem(this.EXCHANGE_CONFIG_KEY);
+      const defaultConfig: ExchangeConfig = {
+        priceMode: 'manual',
+        manualUsdtPrice: 60000,
+        buyFeePercent: 1.5,
+        sellFeePercent: 1.5,
+        expertTelegramId: ''
+      };
       if (stored) {
-        this.exchangeConfig.set(JSON.parse(stored));
+        this.exchangeConfig.set({ ...defaultConfig, ...JSON.parse(stored) });
+      } else {
+        this.exchangeConfig.set(defaultConfig);
       }
-    } catch (e) { console.error('Failed to load exchange config', e); }
+    } catch (e) { 
+        console.error('Failed to load exchange config', e);
+        this.exchangeConfig.set({ priceMode: 'manual', manualUsdtPrice: 60000, buyFeePercent: 1.5, sellFeePercent: 1.5, expertTelegramId: '' });
+    }
   }
 
   saveExchangeConfig(config: ExchangeConfig) {
@@ -100,48 +241,91 @@ export class CryptoService {
   }
 
   // --- Price Fetching ---
-  private fetchPrices() {
-    const ids = this.initialCryptos.map(c => c.id).join(',');
-    // Add include_24hr_change=true to request
-    const url = `https://corsproxy.io/?${encodeURIComponent(this.COINGECKO_API_URL)}?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+  private async fetchPrices() {
+    const config = this.exchangeConfig();
+    let usdtPriceInToman: number;
+
+    // Determine the base USDT price (Toman)
+    if (config.priceMode === 'manual') {
+      usdtPriceInToman = config.manualUsdtPrice;
+    } else {
+      // Auto mode
+      if (config.usdtPriceApiUrl) {
+        try {
+          const url = `${this.CORS_PROXY_URL}${config.usdtPriceApiUrl}`;
+          const data: unknown = await firstValueFrom(this.http.get<unknown>(url));
+          
+          let price: number | undefined;
+
+          if (typeof data === 'number') {
+            price = data;
+          } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+            const resObj = data as Record<string, unknown>;
+            if ('price' in resObj && typeof resObj.price === 'number') {
+              price = resObj.price;
+            } else if ('data' in resObj && resObj.data && typeof resObj.data === 'object' && !Array.isArray(resObj.data)) {
+                const dataObj = resObj.data as Record<string, unknown>;
+                if('price' in dataObj && typeof dataObj.price === 'number') {
+                    price = dataObj.price;
+                }
+            }
+          }
+          
+          if (typeof price === 'number' && !isNaN(price)) {
+            usdtPriceInToman = price;
+          } else {
+             console.warn('USDT price from API is not a valid number. Using fallback.', data);
+             usdtPriceInToman = 62500; // Fallback
+          }
+        } catch (e) {
+          console.error('Failed to fetch or parse USDT price from custom API. Using fallback.', e);
+          usdtPriceInToman = 62500; // Fallback
+        }
+      } else {
+        usdtPriceInToman = 62500; // Simulating a fetched "Auto" rate if no URL
+      }
+    }
+    
+    // Map our app's crypto IDs to CoinGecko's IDs
+    const idMap: { [key: string]: string } = { 'sei-network': 'sei' };
+    
+    const cryptoIdsForApi = this.cryptos().map(c => idMap[c.id] || c.id);
+    const ids = cryptoIdsForApi.join(',');
+    const targetUrl = `${this.COINGECKO_BASE_URL}/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+    const url = `${this.CORS_PROXY_URL}${targetUrl}`;
 
     this.http.get<CoinGeckoPriceResponse>(url).subscribe({
-      next: (prices) => {
-        const config = this.exchangeConfig();
-        
-        // Determine the base USDT price (Toman)
-        let usdtPriceInToman = 60000; // Default fallback
-        if (config.priceMode === 'manual') {
-          usdtPriceInToman = config.manualUsdtPrice;
-        } else {
-           usdtPriceInToman = 62500; // Simulating a fetched "Auto" rate
+      next: (priceData) => {
+        if (!priceData) {
+          console.error('Received invalid response from CoinGecko API.', priceData);
+          this.cryptos.update(list => list.map(c => c.id === 'tether' ? { ...c, price: usdtPriceInToman } : c));
+          return;
         }
 
         this.cryptos.update(currentCryptos =>
           currentCryptos.map(crypto => {
-            const priceData = prices[crypto.id];
-            
-            // For Tether, use the calculated base price
+            const apiId = idMap[crypto.id] || crypto.id;
+            const data = priceData[apiId];
+
             if (crypto.id === 'tether') {
-              return { ...crypto, price: usdtPriceInToman, change24h: priceData?.usd_24h_change || 0 };
+              const usdtData = priceData['tether'];
+              return { ...crypto, price: usdtPriceInToman, priceUsd: usdtData?.usd ?? 1, change24h: usdtData?.usd_24h_change ?? 0 };
             }
             
-            // For other cryptos, calculate their Toman price based on their USD price * USDT (Toman) Rate
-            if (priceData && priceData.usd) {
-              const newPriceInToman = priceData.usd * usdtPriceInToman;
-              return { ...crypto, price: newPriceInToman, change24h: priceData.usd_24h_change || 0 };
+            if (data) {
+              const priceUsd = data.usd;
+              const change24h = data.usd_24h_change;
+              const newPriceInToman = priceUsd * usdtPriceInToman;
+              return { ...crypto, price: newPriceInToman, priceUsd: priceUsd, change24h };
             }
             
             return crypto;
           })
         );
       },
-      error: (err) => {
-        console.error('Failed to fetch crypto prices from CoinGecko. Status:', err.status);
-        // Fallback if API fails: update Tether price at least if manual
-        if(this.exchangeConfig().priceMode === 'manual') {
-             this.cryptos.update(list => list.map(c => c.id === 'tether' ? {...c, price: this.exchangeConfig().manualUsdtPrice} : c));
-        }
+      error: (err: any) => {
+        console.error('Failed to fetch crypto prices from CoinGecko. Status:', err.status, err.message);
+        this.cryptos.update(list => list.map(c => c.id === 'tether' ? {...c, price: usdtPriceInToman} : c));
       },
     });
   }
@@ -149,23 +333,24 @@ export class CryptoService {
   // --- Chart Data ---
   getHistory(cryptoId: string): Observable<number[]> {
     if (cryptoId === 'tether') {
-      // Return flat or slightly oscillating line for stablecoin fallback
-      return of(Array.from({ length: 24 }, () => 1 + (Math.random() * 0.01 - 0.005)));
+      return of(Array.from({ length: 24 }, () => 1 + (Math.random() * 0.002 - 0.001)));
     }
     
-    // Attempt to fetch real market chart (24 hours)
-    const url = `https://corsproxy.io/?https://api.coingecko.com/api/v3/coins/${cryptoId}/market_chart?vs_currency=usd&days=1`;
+    const idMap: { [key: string]: string } = { 'sei-network': 'sei' };
+    const apiId = idMap[cryptoId] || cryptoId;
+    const targetUrl = `${this.COINGECKO_BASE_URL}/coins/${apiId}/market_chart?vs_currency=usd&days=1`;
+    const url = `${this.CORS_PROXY_URL}${targetUrl}`;
     
-    return this.http.get<any>(url).pipe(
-      map(res => {
-         if (res && res.prices && Array.isArray(res.prices)) {
-           // res.prices is [timestamp, price][]
-           return res.prices.map((p: any) => p[1]);
-         }
-         return [];
+    return this.http.get<CoinGeckoHistoryResponse>(url).pipe(
+      map((responseData: CoinGeckoHistoryResponse) => {
+        if (responseData && Array.isArray(responseData.prices)) {
+            const prices = responseData.prices.map(p => p[1]);
+            return prices;
+        }
+        return [];
       }),
-      catchError(() => {
-        // Fallback: Generate a random walk
+      catchError((err) => {
+        console.error(`Failed to fetch crypto history for ${cryptoId} from CoinGecko. Status:`, err.status);
         const data: number[] = [];
         let prev = 100;
         for (let i = 0; i < 24; i++) {
@@ -182,7 +367,7 @@ export class CryptoService {
   private setupUserWalletEffect() {
     effect(() => {
       const user = this.authService.currentUser();
-      if (user && user.username !== 'expert') {
+      if (user && user.role !== 'expert') {
         this.loadUserWallet(user.username);
       } else {
         this.wallet.set(null);
@@ -215,7 +400,7 @@ export class CryptoService {
       }
   }
 
-  // --- Backup & Restore ---
+  // --- Expert Backup & Restore ---
   exportData(): void {
     const backup: SystemBackup = {
       version: '1.0.0',
@@ -231,7 +416,6 @@ export class CryptoService {
       wallets: {}
     };
 
-    // Gather all wallets
     backup.users.forEach(u => {
       const wKey = `${this.WALLET_KEY_PREFIX}${u.username}`;
       const wData = localStorage.getItem(wKey);
@@ -251,31 +435,42 @@ export class CryptoService {
   importData(file: File): Promise<{success: boolean, message: string}> {
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = (e: ProgressEvent<FileReader>) => {
         try {
-          const json = JSON.parse(e.target?.result as string) as SystemBackup;
+          const target = e.target;
+          if (!target || typeof target.result !== 'string') {
+            resolve({ success: false, message: 'خطا در خواندن فایل.' });
+            return;
+          }
+          const json = JSON.parse(target.result) as SystemBackup;
           
-          // Basic Validation
-          if (!json.users || !json.transactions || !json.wallets) {
+          if (!json || typeof json !== 'object' || !json.users || !json.wallets) {
              resolve({ success: false, message: 'فایل نامعتبر است. ساختار فایل صحیح نیست.' });
              return;
           }
 
-          // Restore
-          localStorage.setItem('crypto_users', JSON.stringify(json.users));
-          localStorage.setItem(this.ALL_TRANSACTIONS_KEY, JSON.stringify(json.transactions));
-          localStorage.setItem(this.ALL_DEPOSITS_KEY, JSON.stringify(json.deposits));
-          localStorage.setItem(this.ALL_TOMAN_REQUESTS_KEY, JSON.stringify(json.tomanRequests));
+          localStorage.setItem('crypto_users', JSON.stringify(json.users || []));
+          localStorage.setItem(this.ALL_TRANSACTIONS_KEY, JSON.stringify(json.transactions || []));
+          localStorage.setItem(this.ALL_DEPOSITS_KEY, JSON.stringify(json.deposits || []));
+          localStorage.setItem(this.ALL_TOMAN_REQUESTS_KEY, JSON.stringify(json.tomanRequests || []));
           localStorage.setItem(this.ALL_RECOVERY_REQUESTS_KEY, JSON.stringify(json.recoveryRequests || []));
-          localStorage.setItem(this.DEPOSIT_INFO_KEY, JSON.stringify(json.depositInfo));
-          localStorage.setItem(this.TOMAN_DEPOSIT_INFO_KEY, JSON.stringify(json.tomanDepositInfo));
-          localStorage.setItem(this.EXCHANGE_CONFIG_KEY, JSON.stringify(json.config));
+          localStorage.setItem(this.DEPOSIT_INFO_KEY, JSON.stringify(json.depositInfo || {}));
+          localStorage.setItem(this.TOMAN_DEPOSIT_INFO_KEY, JSON.stringify(json.tomanDepositInfo || { cardNumber: '', shabaNumber: '', usdtWalletAddress: '' }));
+          const defaultConfig = { priceMode: 'manual', manualUsdtPrice: 60000, buyFeePercent: 1.5, sellFeePercent: 1.5, expertTelegramId: '' };
+          localStorage.setItem(this.EXCHANGE_CONFIG_KEY, JSON.stringify(json.config ? { ...defaultConfig, ...json.config } : defaultConfig));
           
-          Object.keys(json.wallets).forEach(username => {
-             localStorage.setItem(`${this.WALLET_KEY_PREFIX}${username}`, JSON.stringify(json.wallets[username]));
+          const allKeys = Object.keys(localStorage);
+          for (const key of allKeys) {
+              if (key.startsWith(this.WALLET_KEY_PREFIX)) {
+                  localStorage.removeItem(key);
+              }
+          }
+
+          const wallets = json.wallets || {};
+          Object.keys(wallets).forEach(username => {
+             localStorage.setItem(`${this.WALLET_KEY_PREFIX}${username}`, JSON.stringify(wallets[username]));
           });
 
-          // Reload internal state
           this.loadExchangeConfig();
           this.loadAllTransactions();
           this.loadAllDepositRequests();
@@ -288,8 +483,12 @@ export class CryptoService {
           setTimeout(() => window.location.reload(), 1500);
 
         } catch (err) {
-          resolve({ success: false, message: 'خطا در خواندن فایل. مطمئن شوید فایل JSON سالم است.' });
+          console.error("Import failed:", err);
+          resolve({ success: false, message: 'خطا در پردازش فایل. مطمئن شوید فایل JSON سالم است.' });
         }
+      };
+      reader.onerror = () => {
+        resolve({ success: false, message: 'خطا در خواندن فایل.' });
       };
       reader.readAsText(file);
     });
@@ -354,7 +553,6 @@ export class CryptoService {
     this.allTransactions.update(current => [newTransaction, ...current]);
     this.saveAllTransactions();
     
-    // Notification
     this.notificationService.addNotification(user.username, 'ثبت تراکنش', `درخواست ${transaction.type} شما ثبت شد و در انتظار تایید است.`);
   }
 
@@ -362,14 +560,20 @@ export class CryptoService {
   private loadDepositInfo() {
     try {
         const stored = localStorage.getItem(this.DEPOSIT_INFO_KEY);
-        if (stored) {
-            this.depositInfo.set(JSON.parse(stored));
-        } else {
-            const emptyInfo: { [key: string]: DepositInfo } = {};
-            this.initialCryptos.forEach(c => {
-                emptyInfo[c.id] = { cardNumber: '', shabaNumber: '', walletAddress: '' };
-            });
-            this.depositInfo.set(emptyInfo);
+        let info: { [key: string]: DepositInfo } = stored ? JSON.parse(stored) : {};
+        
+        let needsUpdate = false;
+        this.cryptos().forEach(c => {
+            if (!info[c.id]) {
+                info[c.id] = { cardNumber: '', shabaNumber: '', walletAddress: '', minDeposit: 0 };
+                needsUpdate = true;
+            } else if (info[c.id].minDeposit === undefined) {
+                info[c.id].minDeposit = 0;
+                needsUpdate = true;
+            }
+        });
+        this.depositInfo.set(info);
+        if (needsUpdate) {
             this.saveDepositInfo();
         }
     } catch (e) { console.error('Failed to load deposit info', e); }
@@ -387,7 +591,8 @@ export class CryptoService {
   private loadTomanDepositInfo() {
     try {
       const stored = localStorage.getItem(this.TOMAN_DEPOSIT_INFO_KEY);
-      this.tomanDepositInfo.set(stored ? JSON.parse(stored) : { cardNumber: '', shabaNumber: '', usdtWalletAddress: '' });
+      const defaultInfo = { cardNumber: '', shabaNumber: '', usdtWalletAddress: '', minDeposit: 0, maxWithdraw: 0 };
+      this.tomanDepositInfo.set(stored ? { ...defaultInfo, ...JSON.parse(stored) } : defaultInfo);
     } catch(e) { console.error('Failed to load toman deposit info', e); }
   }
 
@@ -399,51 +604,166 @@ export class CryptoService {
     this.tomanDepositInfo.set(info);
     this.saveTomanDepositInfo();
   }
+  
+  private _executeTradeAndUpdateWallet(username: string, transactionData: Pick<Transaction, 'type' | 'cryptoId' | 'cryptoAmount' | 'irtAmount'>): Wallet | null {
+    const walletKey = `${this.WALLET_KEY_PREFIX}${username}`;
+    const storedWallet = localStorage.getItem(walletKey);
+    if (!storedWallet) return null;
+    let userWallet: Wallet;
+    try {
+        userWallet = JSON.parse(storedWallet);
+    } catch (e) {
+        return null;
+    }
+
+    const { type, cryptoId, cryptoAmount, irtAmount } = transactionData;
+
+    if (type === 'buy') {
+        if (userWallet.irtBalance < irtAmount) return null; // Final check
+        userWallet.irtBalance -= irtAmount;
+        let asset = userWallet.assets.find(a => a.cryptoId === cryptoId);
+        if (asset) {
+            asset.amount += cryptoAmount;
+        } else {
+            userWallet.assets.push({ cryptoId, amount: cryptoAmount });
+        }
+    } else if (type === 'sell') {
+        let asset = userWallet.assets.find(a => a.cryptoId === cryptoId);
+        if (!asset || asset.amount < cryptoAmount) return null; // Final check
+        asset.amount -= cryptoAmount;
+        userWallet.irtBalance += irtAmount;
+    } else {
+        return null; // This method is only for instant buy/sell
+    }
+    
+    this.saveWalletState(username, userWallet);
+    return userWallet;
+}
+
 
   // --- User Actions ---
-  buy(cryptoId: string, irtAmount: number): { success: boolean, message: string } {
+  buy(cryptoId: string, irtAmount: number, pin: string): { success: boolean, message: string } {
     const user = this.authService.currentUser();
     const currentWallet = this.wallet();
     if (!user || !currentWallet) return { success: false, message: 'لطفاً ابتدا وارد شوید.' };
-    const crypto = this.cryptos().find(c => c.id === cryptoId);
-    if (!crypto) return { success: false, message: 'ارز دیجیتال یافت نشد.' };
+
+    if (!user.transactionPin) return { success: false, message: 'کد تایید تراکنش تنظیم نشده است.' };
+    if (user.transactionPin !== pin) return { success: false, message: 'کد تایید تراکنش اشتباه است.' };
+
+    const cryptoCoin = this.cryptos().find(c => c.id === cryptoId);
+    if (!cryptoCoin || cryptoCoin.price <= 0) return { success: false, message: 'ارز دیجیتال یافت نشد یا قیمت آن نامعتبر است.' };
     if (irtAmount <= 0) return { success: false, message: 'مبلغ باید بیشتر از صفر باشد.' };
     if (currentWallet.irtBalance < irtAmount) return { success: false, message: 'موجودی تومان شما کافی نیست.' };
+    
+    const config = this.exchangeConfig();
+    const feeRate = (config.buyFeePercent || 1.5) / 100;
+    const buyPrice = cryptoCoin.price * 1.01; // 1% spread for buying
 
-    const cryptoAmount = irtAmount / crypto.price;
-    this.addTransaction({ type: 'buy', cryptoId, cryptoAmount, irtAmount, pricePerCoinIrt: crypto.price });
-    return { success: true, message: 'درخواست خرید شما برای تایید ارسال شد.'};
+    const cryptoAmountGross = irtAmount / buyPrice;
+    const feeAmount = cryptoAmountGross * feeRate;
+    const cryptoAmountNet = cryptoAmountGross - feeAmount;
+
+    const transactionData = { type: 'buy' as const, cryptoId, cryptoAmount: cryptoAmountNet, irtAmount, pricePerCoinIrt: buyPrice };
+
+    const updatedWallet = this._executeTradeAndUpdateWallet(user.username, transactionData);
+
+    if (!updatedWallet) {
+        return { success: false, message: 'خطا در پردازش تراکنش. موجودی شما ممکن است در لحظه آخر تغییر کرده باشد.' };
+    }
+
+    this.wallet.set(updatedWallet);
+
+    const newTransaction: Transaction = {
+        ...transactionData,
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        status: 'approved',
+        username: user.username,
+    };
+    this.allTransactions.update(current => [newTransaction, ...current]);
+    this.saveAllTransactions();
+    
+    this.notificationService.addNotification(user.username, 'خرید موفق', `خرید ${cryptoAmountNet.toFixed(6)} ${cryptoCoin.symbol} با موفقیت انجام شد.`, 'success');
+
+    return { success: true, message: 'خرید شما با موفقیت انجام شد.'};
   }
 
-  sell(cryptoId: string, cryptoAmount: number): { success: boolean, message: string } {
+  sell(cryptoId: string, cryptoAmount: number, pin: string): { success: boolean, message: string } {
     const user = this.authService.currentUser();
     const currentWallet = this.wallet();
     if (!user || !currentWallet) return { success: false, message: 'لطفاً ابتدا وارد شوید.' };
-    const crypto = this.cryptos().find(c => c.id === cryptoId);
-    if (!crypto) return { success: false, message: 'ارز دیجیتال یافت نشد.' };
+
+    if (!user.transactionPin) return { success: false, message: 'کد تایید تراکنش تنظیم نشده است.' };
+    if (user.transactionPin !== pin) return { success: false, message: 'کد تایید تراکنش اشتباه است.' };
+
+    const cryptoCoin = this.cryptos().find(c => c.id === cryptoId);
+    if (!cryptoCoin || cryptoCoin.price <= 0) return { success: false, message: 'ارز دیجیتال یافت نشد یا قیمت آن نامعتبر است.' };
     if (cryptoAmount <= 0) return { success: false, message: 'مقدار باید بیشتر از صفر باشد.' };
     const asset = currentWallet.assets.find(a => a.cryptoId === cryptoId);
-    if (!asset || asset.amount < cryptoAmount) return { success: false, message: `موجودی ${crypto.symbol} شما کافی نیست.` };
+    if (!asset || asset.amount < cryptoAmount) return { success: false, message: `موجودی ${cryptoCoin.symbol} شما کافی نیست.` };
+    
+    const config = this.exchangeConfig();
+    const feeRate = (config.sellFeePercent || 1.5) / 100;
+    const sellPrice = cryptoCoin.price * 0.99; // 1% spread for selling
 
-    const irtAmount = cryptoAmount * crypto.price;
-    this.addTransaction({ type: 'sell', cryptoId, cryptoAmount, irtAmount, pricePerCoinIrt: crypto.price });
-    return { success: true, message: 'درخواست فروش شما برای تایید ارسال شد.'};
+    const irtAmountGross = cryptoAmount * sellPrice;
+    const feeAmount = irtAmountGross * feeRate;
+    const irtAmountNet = irtAmountGross - feeAmount;
+
+    const transactionData = { type: 'sell' as const, cryptoId, cryptoAmount, irtAmount: irtAmountNet, pricePerCoinIrt: sellPrice };
+
+    const updatedWallet = this._executeTradeAndUpdateWallet(user.username, transactionData);
+
+    if (!updatedWallet) {
+        return { success: false, message: 'خطا در پردازش تراکنش. موجودی ارز شما ممکن است در لحظه آخر تغییر کرده باشد.' };
+    }
+    
+    this.wallet.set(updatedWallet);
+    
+    const newTransaction: Transaction = {
+        ...transactionData,
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        status: 'approved',
+        username: user.username,
+    };
+    this.allTransactions.update(current => [newTransaction, ...current]);
+    this.saveAllTransactions();
+    
+    this.notificationService.addNotification(user.username, 'فروش موفق', `فروش ${cryptoAmount.toFixed(6)} ${cryptoCoin.symbol} با موفقیت انجام شد.`, 'success');
+
+    return { success: true, message: 'فروش شما با موفقیت انجام شد.'};
   }
 
-  withdraw(cryptoId: string, cryptoAmount: number, destinationAddress: string): { success: boolean, message: string } {
+  withdraw(cryptoId: string, cryptoAmount: number, destinationAddress: string, pin: string): { success: boolean, message: string } {
     const user = this.authService.currentUser();
     const currentWallet = this.wallet();
     if (!user || !currentWallet) return { success: false, message: 'لطفاً ابتدا وارد شوید.' };
+    
+    if (!user.transactionPin) return { success: false, message: 'کد تایید تراکنش تنظیم نشده است.' };
+    if (user.transactionPin !== pin) return { success: false, message: 'کد تایید تراکنش اشتباه است.' };
+
     if (!destinationAddress || destinationAddress.trim() === '') return { success: false, message: 'آدرس کیف پول مقصد الزامی است.' };
-    const crypto = this.cryptos().find(c => c.id === cryptoId);
-    if (!crypto) return { success: false, message: 'ارز دیجیتال یافت نشد.' };
+    const cryptoCoin = this.cryptos().find(c => c.id === cryptoId);
+    if (!cryptoCoin) return { success: false, message: 'ارز دیجیتال یافت نشد.' };
     if (cryptoAmount <= 0) return { success: false, message: 'مقدار باید بیشتر از صفر باشد.' };
+    
     const asset = currentWallet.assets.find(a => a.cryptoId === cryptoId);
-    if (!asset || asset.amount < cryptoAmount) return { success: false, message: `موجودی ${crypto.symbol} شما کافی نیست.` };
-
-    const irtAmount = cryptoAmount * crypto.price;
-    this.addTransaction({ type: 'withdraw', cryptoId, cryptoAmount, irtAmount, pricePerCoinIrt: crypto.price, destinationAddress });
-    return { success: true, message: 'درخواست برداشت شما برای تایید ارسال شد.'};
+    
+    if (!asset || asset.amount < cryptoAmount) return { success: false, message: `موجودی ${cryptoCoin.symbol} شما کافی نیست.` };
+    
+    const irtAmount = cryptoAmount * cryptoCoin.price; // For record keeping
+    
+    this.addTransaction({ 
+        type: 'withdraw', 
+        cryptoId, 
+        cryptoAmount, 
+        irtAmount, 
+        pricePerCoinIrt: cryptoCoin.price, 
+        destinationAddress, 
+        fee: 0 
+    });
+    return { success: true, message: `درخواست برداشت شما برای تایید ارسال شد.`};
   }
   
   addDepositRequest(requestData: Omit<DepositRequest, 'id'|'timestamp'|'status'|'username'|'type'>): { success: boolean, message: string } {
@@ -458,45 +778,64 @@ export class CryptoService {
     return { success: true, message: 'درخواست واریز شما برای تایید ارسال شد.' };
   }
 
-  addTomanDepositRequest(amount: number, receiptImageUrl: string): { success: boolean, message: string } {
+  addTomanDepositRequest(amount: number): { success: boolean; message: string; trackingCode?: string } {
     const user = this.authService.currentUser();
     if (!user) return { success: false, message: 'لطفا ابتدا وارد شوید.' };
+
+    const trackingCode = `NVX-${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
 
     const newRequest: TomanRequest = {
       id: crypto.randomUUID(),
       username: user.username,
       type: 'toman_deposit',
       amount,
-      receiptImageUrl,
+      trackingCode,
       timestamp: Date.now(),
       status: 'pending'
     };
     this.allTomanRequests.update(current => [newRequest, ...current]);
     this.saveAllTomanRequests();
-    this.notificationService.addNotification(user.username, 'واریز تومان', 'درخواست واریز تومان شما ثبت گردید.');
-    return { success: true, message: 'درخواست واریز تومان برای تایید ارسال شد.' };
+    this.notificationService.addNotification(user.username, 'ثبت درخواست واریز تومان', `درخواست شما با کد پیگیری ${trackingCode} ثبت شد.`);
+    return { success: true, message: 'درخواست واریز تومان ثبت شد. لطفاً مبلغ را به همراه کد پیگیری به حساب صرافی واریز کنید.', trackingCode };
   }
 
-  addTomanWithdrawRequest(amount: number, shabaNumber: string): { success: boolean, message: string } {
+  addTomanWithdrawRequest(amount: number, pin: string): { success: boolean; message: string } {
     const user = this.authService.currentUser();
     const currentWallet = this.wallet();
-    if (!user || !currentWallet) return { success: false, message: 'لطفاً ابتدا وارد شوید.' };
-    if (amount <= 0) return { success: false, message: 'مبلغ باید بیشتر از صفر باشد.' };
-    if (currentWallet.irtBalance < amount) return { success: false, message: 'موجودی تومان شما کافی نیست.' };
-    if (!shabaNumber || shabaNumber.trim().length < 16) return { success: false, message: 'شماره شبا معتبر نیست.' };
-
+    if (!user || !currentWallet) {
+      return { success: false, message: 'لطفاً ابتدا وارد شوید.' };
+    }
+  
+    if (!user.transactionPin || !user.shabaNumber) {
+      return { success: false, message: 'اطلاعات تراکنش (کد تایید و شماره شبا) کامل نیست.' };
+    }
+    if (user.transactionPin !== pin) {
+      return { success: false, message: 'کد تایید تراکنش اشتباه است.' };
+    }
+  
+    if (amount <= 0) {
+      return { success: false, message: 'مبلغ باید بیشتر از صفر باشد.' };
+    }
+    if (currentWallet.irtBalance < amount) {
+      return { success: false, message: 'موجودی تومان شما کافی نیست.' };
+    }
+  
     const newRequest: TomanRequest = {
       id: crypto.randomUUID(),
       username: user.username,
       type: 'toman_withdraw',
       amount,
-      shabaNumber,
+      shabaNumber: user.shabaNumber,
       timestamp: Date.now(),
-      status: 'pending'
+      status: 'pending',
     };
-    this.allTomanRequests.update(current => [newRequest, ...current]);
+    this.allTomanRequests.update((current) => [newRequest, ...current]);
     this.saveAllTomanRequests();
-    this.notificationService.addNotification(user.username, 'برداشت تومان', 'درخواست برداشت تومان شما ثبت شد.');
+    this.notificationService.addNotification(
+      user.username,
+      'برداشت تومان',
+      'درخواست برداشت تومان شما ثبت شد.'
+    );
     return { success: true, message: 'درخواست برداشت تومان برای تایید ارسال شد.' };
   }
 
@@ -520,14 +859,51 @@ export class CryptoService {
     this.allRecoveryRequests.update(current => [newRequest, ...current]);
     this.saveAllRecoveryRequests();
     
-    // Notify expert a new request has arrived.
     this.notificationService.addNotification('expert', 'درخواست بازیابی جدید', `یک درخواست بازیابی حساب از طرف ${matchedUser ? matchedUser.username : 'کاربر ناشناس'} ثبت شد.`);
 
-    return { success: true, message: 'درخواست شما با موفقیت ثبت شد. پس از بررسی توسط کارشناс، نتیجه از طریق ایمیل (در صورت ثبت) به شما اطلاع داده خواهد شد.' };
+    return { success: true, message: 'درخواست شما با موفقیت ثبت شد. پس از بررسی توسط کارشناس، نتیجه از طریق ایمیل (در صورت ثبت) به شما اطلاع داده خواهد شد.' };
   }
 
 
   // --- Expert Actions ---
+  public async approveRecoveryRequest(reqId: string): Promise<{ success: boolean; message: string; recoveredPassword?: string; }> {
+    const req = this.allRecoveryRequests().find(r => r.id === reqId);
+    if (!req || req.status !== 'pending') {
+        return { success: false, message: 'درخواست یافت نشد یا قبلاً پردازش شده است.' };
+    }
+
+    if (!req.matchedUsername) {
+        this.allRecoveryRequests.update(reqs => reqs.map(r => r.id === reqId ? { ...r, status: 'rejected' } : r));
+        this.saveAllRecoveryRequests();
+        return { success: false, message: 'کاربری با اطلاعات ارائه شده مطابقت ندارد. درخواست رد شد.' };
+    }
+
+    const temporaryPassword = await this.authService.resetPasswordForUser(req.matchedUsername);
+
+    if (temporaryPassword) {
+        this.allRecoveryRequests.update(reqs => reqs.map(r => r.id === reqId ? { ...r, status: 'approved' } : r));
+        this.saveAllRecoveryRequests();
+        
+        this.notificationService.addNotification(req.matchedUsername, 'بازیابی حساب موفق', 'حساب شما با موفقیت بازیابی شد. رمز عبور موقت برای شما ایجاد شده است.', 'success');
+        
+        return { success: true, message: 'حساب با موفقیت بازیابی شد. رمز عبور موقت ایجاد شده است.', recoveredPassword: temporaryPassword };
+    } else {
+        return { success: false, message: 'خطا در بازنشانی رمز عبور کاربر.' };
+    }
+  }
+
+  public rejectRecoveryRequest(reqId: string): void {
+      const req = this.allRecoveryRequests().find(r => r.id === reqId);
+      if (req && req.status === 'pending') {
+          this.allRecoveryRequests.update(reqs => reqs.map(r => r.id === reqId ? { ...r, status: 'rejected' } : r));
+          this.saveAllRecoveryRequests();
+
+          const notifyTarget = req.matchedUsername || 'expert';
+          const message = req.matchedUsername ? 'درخواست بازیابی حساب شما رد شد.' : `درخواست بازیابی برای کاربر ناشناس رد شد.`;
+          this.notificationService.addNotification(notifyTarget, 'بازیابی حساب ناموفق', message, 'error');
+      }
+  }
+
   approveTransaction(txId: string) {
     const tx = this.allTransactions().find(t => t.id === txId);
     if (!tx || tx.status !== 'pending') return;
@@ -538,16 +914,18 @@ export class CryptoService {
     let userWallet: Wallet = JSON.parse(storedWallet);
 
     if (tx.type === 'buy') {
-        if (userWallet.irtBalance < tx.irtAmount) return; // Final check
-        userWallet.irtBalance -= tx.irtAmount;
+        // This is an approved trade, already happened. This is for manual approval which is not used for buy/sell
+    } else if (tx.type === 'sell') {
+        // This is an approved trade, already happened. This is for manual approval which is not used for buy/sell
+    } else if (tx.type === 'withdraw') {
         let asset = userWallet.assets.find(a => a.cryptoId === tx.cryptoId);
-        if (asset) asset.amount += tx.cryptoAmount;
-        else userWallet.assets.push({ cryptoId: tx.cryptoId, amount: tx.cryptoAmount });
-    } else if (tx.type === 'sell' || tx.type === 'withdraw') {
-        let asset = userWallet.assets.find(a => a.cryptoId === tx.cryptoId);
-        if (!asset || asset.amount < tx.cryptoAmount) return; // Final check
-        asset.amount -= tx.cryptoAmount;
-        if(tx.type === 'sell') userWallet.irtBalance += tx.irtAmount;
+        const totalToDeduct = tx.cryptoAmount; // The amount already includes fee logic from the `withdraw` function
+        if (!asset || asset.amount < totalToDeduct) {
+             this.notificationService.addNotification(tx.username, 'رد تراکنش', `موجودی شما برای برداشت ${tx.cryptoAmount} ${tx.cryptoId} کافی نبود.`, 'error');
+             this.rejectTransaction(txId);
+             return;
+        }
+        asset.amount -= totalToDeduct;
     }
     
     this.saveWalletState(tx.username, userWallet);
@@ -582,7 +960,12 @@ export class CryptoService {
     else userWallet.assets.push({ cryptoId: req.cryptoId, amount: req.cryptoAmount });
     
     this.saveWalletState(req.username, userWallet);
-    this.allDepositRequests.update(reqs => reqs.map(r => r.id === reqId ? { ...r, status: 'approved' } : r));
+    this.allDepositRequests.update(reqs => reqs.map(r => {
+      if (r.id === reqId) {
+        return { ...r, status: 'approved' };
+      }
+      return r;
+    }));
     this.saveAllDepositRequests();
     
     this.notificationService.addNotification(req.username, 'واریز موفق', `واریز ${req.cryptoAmount} واحد ارز با موفقیت به کیف پول شما افزوده شد.`, 'success');
@@ -593,7 +976,12 @@ export class CryptoService {
   rejectDepositRequest(reqId: string) {
     const req = this.allDepositRequests().find(r => r.id === reqId);
     if (req) {
-        this.allDepositRequests.update(reqs => reqs.map(r => r.id === reqId && r.status === 'pending' ? { ...r, status: 'rejected' } : r));
+        this.allDepositRequests.update(reqs => reqs.map(r => {
+          if (r.id === reqId && r.status === 'pending') {
+            return { ...r, status: 'rejected' };
+          }
+          return r;
+        }));
         this.saveAllDepositRequests();
         this.notificationService.addNotification(req.username, 'واریز ناموفق', `درخواست واریز ارز شما رد شد.`, 'error');
     }
@@ -618,50 +1006,31 @@ export class CryptoService {
     }
 
     this.saveWalletState(req.username, userWallet);
-    this.allTomanRequests.update(reqs => reqs.map(r => r.id === reqId ? { ...r, status: 'approved' } : r));
+    this.allTomanRequests.update(reqs => reqs.map(r => {
+      if (r.id === reqId) {
+        const { ...rest } = r;
+        return { ...rest, status: 'approved' };
+      }
+      return r;
+    }));
     this.saveAllTomanRequests();
 
-    if (this.authService.currentUser()?.username === req.username) this.wallet.set(userWallet);
+    if (this.authService.currentUser()?.username === req.username) {
+        this.wallet.set(userWallet);
+    }
   }
 
   rejectTomanRequest(reqId: string) {
     const req = this.allTomanRequests().find(r => r.id === reqId);
     if (req) {
-        this.allTomanRequests.update(reqs => reqs.map(r => r.id === reqId && r.status === 'pending' ? { ...r, status: 'rejected' } : r));
+        this.allTomanRequests.update(reqs => reqs.map(r => {
+          if (r.id === reqId && r.status === 'pending') {
+            return { ...r, status: 'rejected' };
+          }
+          return r;
+        }));
         this.saveAllTomanRequests();
-        this.notificationService.addNotification(req.username, 'درخواست ناموفق', `درخواست ${req.type === 'toman_deposit' ? 'واریز' : 'برداشت'} تومان شما رد شد.`, 'error');
+        this.notificationService.addNotification(req.username, 'درخواست تومان رد شد', `درخواست ${req.type === 'toman_deposit' ? 'واریز' : 'برداشت'} تومان شما رد شد.`, 'error');
     }
-  }
-
-  approveRecoveryRequest(reqId: string): { success: boolean, message: string } {
-    const req = this.allRecoveryRequests().find(r => r.id === reqId);
-    if (!req || req.status !== 'pending' || !req.matchedUsername) {
-        return { success: false, message: 'درخواست نامعتبر است یا کاربری برای آن یافت نشده.' };
-    }
-
-    const user = this.authService.getUsers().find(u => u.username === req.matchedUsername);
-    if (!user) {
-        return { success: false, message: 'کاربر مرتبط با این درخواست یافت نشد.' };
-    }
-
-    this.allRecoveryRequests.update(reqs => reqs.map(r => r.id === reqId ? { ...r, status: 'approved' } : r));
-    this.saveAllRecoveryRequests();
-
-    // Simulate sending email
-    console.log(`[DEV ONLY] Recovery email sent to ${user.email || 'NO_EMAIL_ON_FILE'} for user ${user.username}. Password: ${user.password}`);
-    
-    // Notify expert
-    this.notificationService.addNotification('expert', 'بازیابی موفق', `اطلاعات بازیابی برای کاربر ${user.username} (شبیه‌سازی ارسال) شد.`, 'success');
-    
-    return { success: true, message: `ایمیل بازیابی برای ${user.username} ارسال شد.` };
-  }
-
-  rejectRecoveryRequest(reqId: string) {
-      const req = this.allRecoveryRequests().find(r => r.id === reqId);
-      if (req) {
-          this.allRecoveryRequests.update(reqs => reqs.map(r => r.id === reqId && r.status === 'pending' ? { ...r, status: 'rejected' } : r));
-          this.saveAllRecoveryRequests();
-          this.notificationService.addNotification('expert', 'بازیابی رد شد', `درخواست بازیابی برای ${req.matchedUsername || 'کاربر ناشناس'} رد شد.`, 'warning');
-      }
   }
 }

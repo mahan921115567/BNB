@@ -19,7 +19,7 @@
         </div>
         <button 
           type="submit"
-          [disabled]="!phone() || !phone().match(/^09\d{9}$/)"
+          [disabled]="!isPhoneValid()"
           class="w-full py-3 rounded-lg font-bold text-lg text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-amber-400 hover:bg-amber-500">
           ارسال کد تایید
         </button>
@@ -29,7 +29,7 @@
       <form (ngSubmit)="handleVerifyOtp()" class="flex flex-col space-y-4 animate-fade-in">
         <h2 class="text-2xl font-bold text-center text-amber-400">تایید شماره تلفن</h2>
         <div class="bg-amber-400/10 border border-amber-400/30 p-3 rounded-lg text-center">
-            <p class="text-gray-600 dark:text-gray-300 text-sm">کد تایید ۶ رقمی به شماره <span class="font-mono font-bold">{{phone()}}</span> ارسال شد.</p>
+            <p class="text-gray-600 dark:text-gray-300 text-sm">کد تایید ۶ رقمی به شماره <span class="font-mono font-bold">{{phone}}</span> ارسال شد.</p>
         </div>
         <div class="flex flex-col">
           <label for="otp-code" class="mb-2 font-semibold text-gray-600 dark:text-gray-300 text-center">کد تایید:</label>
@@ -46,11 +46,22 @@
         </div>
         <button 
           type="submit"
-          [disabled]="!otpCode() || otpCode().length !== 6"
+          [disabled]="!otpCode || otpCode.length !== 6"
           class="w-full py-3 rounded-lg font-bold text-lg text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-amber-400 hover:bg-amber-500">
           تایید کد
         </button>
-        <button type="button" (click)="registerStep.set('phone')" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+        <div class="text-center text-sm">
+            @if (canResendOtp()) {
+              <button type="button" (click)="resendOtp()" class="text-blue-500 hover:text-blue-400 cursor-pointer font-semibold">
+                ارسال مجدد کد
+              </button>
+            } @else {
+              <span class="text-gray-500 dark:text-gray-400">
+                ارسال مجدد کد تا {{ otpTimer() }} ثانیه دیگر
+              </span>
+            }
+        </div>
+        <button type="button" (click)="goBackToPhoneStep()" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
           ویرایش شماره تلفن
         </button>
       </form>
@@ -60,21 +71,21 @@
         <h2 class="text-2xl font-bold text-center text-amber-400">تکمیل اطلاعات</h2>
 
         <div class="p-2 bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold rounded-lg text-center border border-green-500/20">
-            شماره تلفن <span class="font-mono">{{phone()}}</span> با موفقیت تایید شد.
+            شماره تلفن <span class="font-mono">{{phone}}</span> با موفقیت تایید شد.
         </div>
 
         <!-- Username Input -->
         <div class="flex flex-col">
           <label for="username-register" class="mb-2 font-semibold text-gray-600 dark:text-gray-300">نام کاربری:</label>
           <input id="username-register" type="text" [(ngModel)]="username" name="username" required class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none" placeholder="یک نام کاربری انتخاب کنید">
-          <app-username-rules [username]="username()"></app-username-rules>
+          <app-username-rules [username]="username"></app-username-rules>
         </div>
 
         <!-- Password Input -->
         <div class="flex flex-col">
           <label for="password-register" class="mb-2 font-semibold text-gray-600 dark:text-gray-300">رمز عبور:</label>
           <input id="password-register" type="password" [(ngModel)]="password" name="password" required class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none" placeholder="یک رمز عبور قوی انتخاب کنید">
-          <app-password-strength [password]="password()"></app-password-strength>
+          <app-password-strength [password]="password"></app-password-strength>
         </div>
 
         <h3 class="text-lg font-bold text-center text-gray-700 dark:text-gray-400 pt-4 border-t border-gray-200 dark:border-gray-700/50">اطلاعات هویتی</h3>
@@ -87,7 +98,7 @@
           </div>
           <!-- Birth Place -->
           <div class="flex flex-col">
-            <label for="birthPlace-register" class="mb-2 font-semibold text-gray-600 dark:text-gray-300">محل صدور:</label>
+            <label for="birthPlace-register" class="mb-2 font-semibold text-gray-600 dark:text-gray-300">محل صدور شناسنامه:</label>
             <input id="birthPlace-register" type="text" [(ngModel)]="birthPlace" name="birthPlace" required placeholder="مثال: تهران" class="w-full p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none">
           </div>
         </div>
@@ -112,7 +123,7 @@
         <!-- Action Button -->
         <button 
           type="submit"
-          [disabled]="!username() || !password() || !nationalId() || !birthDate() || !birthPlace() || !isCaptchaVerified()"
+          [disabled]="!username || !password || !nationalId || !birthDate || !birthPlace || !isCaptchaVerified()"
           class="w-full py-3 rounded-lg font-bold text-lg text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-amber-400 hover:bg-amber-500">
           ثبت نام نهایی
         </button>
@@ -121,7 +132,8 @@
   }
 
   <!-- Status Message -->
-  @if (status(); as s) {
+  @let s = status();
+  @if (s) {
     <div 
       class="p-3 rounded-lg text-center font-semibold"
       [class.bg-green-500/20]="s.success"
@@ -135,14 +147,16 @@
   }
 
   <!-- Mock SMS Notification Toast -->
-  @if (mockSmsNotification(); as msg) {
-    <div class="fixed top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border-l-4 border-amber-400 text-gray-800 dark:text-white px-6 py-4 rounded shadow-2xl z-50 animate-fade-in flex items-center gap-3 max-w-sm w-full">
-       <div class="bg-amber-500/20 p-2 rounded-full text-amber-500 dark:text-amber-400">
+  @let msg = mockSmsNotification();
+  @if (msg) {
+    <div class="fixed top-4 left-1/2 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900/50 border-l-4 border-amber-400 text-gray-800 dark:text-white px-4 sm:px-6 py-4 rounded-2xl shadow-2xl z-50 animate-slide-down flex items-center gap-4 w-[calc(100%-2rem)] max-w-sm">
+       <div class="flex-shrink-0 bg-amber-500/20 p-2 rounded-full text-amber-500 dark:text-amber-400">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
        </div>
-       <div>
+       <div class="flex-grow min-w-0">
          <p class="font-bold text-sm">پیامک سیستم</p>
-         <p class="text-sm mt-1">{{ msg }}</p>
+         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ msg.text }}</p>
+         <p class="text-center font-mono text-xl sm:text-2xl font-bold tracking-widest sm:tracking-[0.2em] text-amber-500 dark:text-amber-400 bg-gray-100 dark:bg-gray-900/50 p-2 rounded-lg mt-2">{{ msg.code }}</p>
        </div>
     </div>
   }

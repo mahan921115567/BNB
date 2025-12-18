@@ -18,11 +18,11 @@ export class SupportComponent {
   @ViewChild('chatContainer') private chatContainer!: ElementRef<HTMLDivElement>;
 
   currentUser = this.authService.currentUser;
-  newMessage = signal('');
+  newMessage = ''; // Changed from signal to primitive
   
   username = computed(() => this.currentUser()?.username || '');
 
-  session = computed(() => this.chatService.getSession(this.username())());
+  session = computed(() => this.chatService.chatSessions().find(s => s.id === this.username()));
   
   messages = computed(() => this.session()?.messages || []);
 
@@ -34,16 +34,19 @@ export class SupportComponent {
       }
     });
 
-    // Mark messages as read when component is viewed
-    if(this.username()) {
-        this.chatService.markAsRead(this.username(), 'user');
-    }
+    // Mark messages as read when the component is viewed and the user is identified.
+    effect(() => {
+      const user = this.username();
+      if (user) {
+        this.chatService.markAsRead(user, 'user');
+      }
+    });
   }
 
   sendMessage() {
-    if (this.newMessage().trim() && this.username()) {
-      this.chatService.sendMessage(this.username(), this.newMessage(), 'user');
-      this.newMessage.set('');
+    if (this.newMessage.trim() && this.username()) {
+      this.chatService.sendMessage(this.username(), this.newMessage, 'user', false);
+      this.newMessage = '';
     }
   }
 

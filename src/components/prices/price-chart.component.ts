@@ -1,4 +1,3 @@
-
 import { Component, ElementRef, input, ViewChild, inject, signal, afterNextRender, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as d3 from 'd3';
@@ -22,6 +21,7 @@ export class PriceChartComponent {
   
   // Inputs
   cryptoId = input.required<string>();
+  delay = input<number>(0);
   
   @ViewChild('chartContainer') private chartContainer!: ElementRef;
 
@@ -35,12 +35,14 @@ export class PriceChartComponent {
   }
 
   private fetchAndRender() {
-    this.cryptoService.getHistory(this.cryptoId()).subscribe(data => {
-      this.isLoading.set(false);
-      if (data && data.length > 0) {
-        this.renderChart(data);
-      }
-    });
+    setTimeout(() => {
+      this.cryptoService.getHistory(this.cryptoId()).subscribe(data => {
+        this.isLoading.set(false);
+        if (data && data.length > 0) {
+          this.renderChart(data);
+        }
+      });
+    }, this.delay());
   }
 
   private renderChart(data: number[]) {

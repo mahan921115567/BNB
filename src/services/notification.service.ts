@@ -1,4 +1,3 @@
-
 import { Injectable, signal, computed } from '@angular/core';
 import { AppNotification } from '../models/notification.model';
 
@@ -9,7 +8,7 @@ export class NotificationService {
   private readonly STORAGE_KEY = 'crypto_notifications';
   
   // Holds all notifications in the system
-  private allNotifications = signal<AppNotification[]>([]);
+  public allNotifications = signal<AppNotification[]>([]);
 
   constructor() {
     this.loadNotifications();
@@ -44,22 +43,6 @@ export class NotificationService {
 
     this.allNotifications.update(notes => [newNote, ...notes]);
     this.saveNotifications();
-  }
-
-  // Get notifications filtered for a specific user
-  getUserNotifications(username: string) {
-    return computed(() => {
-      return this.allNotifications()
-        .filter(n => n.userId === username || n.userId === 'all')
-        .sort((a, b) => b.timestamp - a.timestamp);
-    });
-  }
-  
-  // Count unread for a user
-  getUnreadCount(username: string) {
-    return computed(() => {
-        return this.allNotifications().filter(n => (n.userId === username || n.userId === 'all') && !n.read).length;
-    });
   }
 
   markAsRead(notificationId: string) {

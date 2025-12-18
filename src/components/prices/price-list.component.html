@@ -37,7 +37,8 @@
   <div class="relative w-full">
     <input 
       type="text" 
-      [(ngModel)]="searchTerm"
+      [ngModel]="searchTerm()"
+      (ngModelChange)="searchTerm.set($event)"
       placeholder="جستجوی نام یا نماد ارز..."
       class="w-full p-3 pl-10 bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 rounded-2xl text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition-all">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -49,7 +50,7 @@
         <p>ارز دیجیتال مورد نظر یافت نشد.</p>
       </div>
     } @else {
-      @for (crypto of enrichedCryptos(); track crypto.id) {
+      @for (crypto of enrichedCryptos(); track crypto.id; let i = $index) {
         <div class="group bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-4 rounded-3xl flex items-center justify-between transition-all duration-300 hover:bg-gray-100/60 dark:hover:bg-gray-800/60 hover:border-gray-300 dark:hover:border-gray-700 hover:scale-[1.01] hover:shadow-xl shadow-lg gap-4">
           <!-- Crypto Info -->
           <div class="flex items-center space-x-4 space-x-reverse min-w-[140px]">
@@ -64,13 +65,17 @@
           
           <!-- Chart (Hidden on very small screens) -->
           <div class="hidden sm:block flex-grow max-w-[150px] opacity-70 group-hover:opacity-100 transition-opacity">
-             <app-price-chart [cryptoId]="crypto.id"></app-price-chart>
+             <app-price-chart [cryptoId]="crypto.id" [delay]="i * 250"></app-price-chart>
           </div>
 
           <!-- Price & Change -->
           <div class="text-left flex flex-col items-end">
             <p class="font-bold font-mono text-lg text-gray-900 dark:text-white tracking-tight">{{ crypto.price | number:'1.0-0' }} <span class="text-xs text-gray-500 font-sans">تومان</span></p>
-            
+            @if(crypto.priceUsd) {
+              <p class="font-mono text-sm text-gray-500 dark:text-gray-400 -mt-1">
+                ${{ crypto.priceUsd | number:'1.2-4' }}
+              </p>
+            }
             <div class="flex items-center gap-1 mt-1 px-2 py-1 rounded-lg text-xs font-bold"
                  [class.bg-green-500/10]="(crypto.change24h || 0) >= 0"
                  [class.text-green-600]="(crypto.change24h || 0) >= 0"

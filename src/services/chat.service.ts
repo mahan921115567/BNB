@@ -1,4 +1,3 @@
-
 import { Injectable, signal, computed } from '@angular/core';
 import { ChatMessage, ChatSession } from '../models/chat.model';
 
@@ -8,7 +7,7 @@ import { ChatMessage, ChatSession } from '../models/chat.model';
 export class ChatService {
   private readonly STORAGE_KEY = 'crypto_chat_sessions';
 
-  private chatSessions = signal<ChatSession[]>([]);
+  public chatSessions = signal<ChatSession[]>([]);
 
   constructor() {
     this.loadSessions();
@@ -28,77 +27,77 @@ export class ChatService {
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.chatSessions()));
   }
 
-  // For expert panel: list all chats
-  getExpertChatList() {
-    return computed(() => 
-      this.chatSessions().sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp)
-    );
-  }
-
-  // For both user and expert: get a specific chat session
-  getSession(username: string) {
-    return computed(() => this.chatSessions().find(s => s.username === username));
-  }
-
   // Send a message
-  sendMessage(username: string, text: string, sender: 'user' | 'expert') {
+  sendMessage(sessionId: string, text: string, sender: 'user' | 'expert', isGuest: boolean) {
     if (!text.trim()) return;
 
-    this.chatSessions.update(sessions => {
-      let session = sessions.find(s => s.username === username);
-      const newMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        timestamp: Date.now(),
-        sender,
-        text,
-        readByUser: sender === 'user',
-        readByExpert: sender === 'expert',
-      };
+    const newMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      sender,
+      text,
+      readByUser: sender === 'user',
+      readByExpert: sender === 'expert',
+    };
 
-      if (session) {
-        session.messages.push(newMessage);
-        session.lastMessageTimestamp = newMessage.timestamp;
-        session.hasUnreadByExpert = sender === 'user';
+    this.chatSessions.update(sessions => {
+      const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+
+      if (sessionIndex > -1) {
+        // Update existing session immutably
+        const existingSession = sessions[sessionIndex];
+        const updatedSession: ChatSession = {
+          ...existingSession,
+          messages: [...existingSession.messages, newMessage],
+          lastMessageTimestamp: newMessage.timestamp,
+          hasUnreadByExpert: sender === 'user' ? true : existingSession.hasUnreadByExpert,
+        };
+        // Return a new array with the updated session
+        return sessions.map((s, index) => index === sessionIndex ? updatedSession : s);
       } else {
-        session = {
-          id: username,
-          username,
+        // Create a new session
+        const newSession: ChatSession = {
+          id: sessionId,
+          username: sessionId,
+          isGuest: isGuest,
           messages: [newMessage],
           lastMessageTimestamp: newMessage.timestamp,
           hasUnreadByExpert: sender === 'user',
         };
-        sessions.push(session);
+        // Return a new array with the new session added
+        return [...sessions, newSession];
       }
-      return [...sessions];
     });
     this.saveSessions();
   }
 
   // Mark messages as read
-  markAsRead(username: string, reader: 'user' | 'expert') {
-     this.chatSessions.update(sessions => {
-        const session = sessions.find(s => s.username === username);
-        if (session) {
-            if(reader === 'expert') {
-                session.hasUnreadByExpert = false;
-            }
-            session.messages.forEach(msg => {
-                if (reader === 'user' && msg.sender === 'expert') msg.readByUser = true;
-                if (reader === 'expert' && msg.sender === 'user') msg.readByExpert = true;
-            });
+  markAsRead(sessionId: string, reader: 'user' | 'expert') {
+    this.chatSessions.update(sessions =>
+      sessions.map(session => {
+        if (session.id !== sessionId) {
+          return session;
         }
-        return [...sessions];
-     });
-     this.saveSessions();
-  }
 
-  // For user notification dot
-  getUnreadUserCount(username: string | undefined) {
-    if (!username) return computed(() => 0);
-    return computed(() => {
-        const session = this.chatSessions().find(s => s.username === username);
-        if (!session) return 0;
-        return session.messages.filter(m => m.sender === 'expert' && !m.readByUser).length;
-    });
+        // Create a new session object for the one being updated
+        return {
+          ...session,
+          hasUnreadByExpert: reader === 'expert' ? false : session.hasUnreadByExpert,
+          messages: session.messages.map(msg => {
+            const needsUserReadUpdate = reader === 'user' && msg.sender === 'expert' && !msg.readByUser;
+            const needsExpertReadUpdate = reader === 'expert' && msg.sender === 'user' && !msg.readByExpert;
+
+            if (needsUserReadUpdate) {
+              return { ...msg, readByUser: true };
+            }
+            if (needsExpertReadUpdate) {
+              return { ...msg, readByExpert: true };
+            }
+            return msg;
+          }),
+        };
+      })
+    );
+    this.saveSessions();
   }
 }

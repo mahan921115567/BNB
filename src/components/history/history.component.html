@@ -5,11 +5,105 @@
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">لیست تمام تراکنش‌های خرید، فروش، واریز و برداشت</p>
     </div>
 
+    <!-- Filter Buttons -->
+    <div class="flex flex-col gap-3 bg-gray-100 dark:bg-gray-800/60 backdrop-blur-md rounded-3xl p-2 border border-gray-200 dark:border-gray-700/50">
+      <!-- Type Filters -->
+      <div class="flex justify-center bg-white/50 dark:bg-black/20 rounded-2xl p-1 flex-wrap">
+        <button 
+          (click)="setFilterType('all')" 
+          [class.bg-amber-400/20]="filterType() === 'all'" 
+          [class.dark:bg-amber-400/10]="filterType() === 'all'" 
+          [class.text-amber-600]="filterType() === 'all'"
+          [class.dark:text-amber-400]="filterType() === 'all'"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white flex-1 min-w-max">
+          همه تراکنش‌ها
+        </button>
+        <button 
+          (click)="setFilterType('buy')" 
+          [class.bg-amber-400/20]="filterType() === 'buy'" 
+          [class.dark:bg-amber-400/10]="filterType() === 'buy'"
+          [class.text-amber-600]="filterType() === 'buy'"
+          [class.dark:text-amber-400]="filterType() === 'buy'"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 mx-1 flex-1 min-w-max">
+          خرید
+        </button>
+        <button 
+          (click)="setFilterType('sell')" 
+          [class.bg-gray-400/20]="filterType() === 'sell'" 
+          [class.dark:bg-gray-500/20]="filterType() === 'sell'"
+          [class.text-gray-600]="filterType() === 'sell'"
+          [class.dark:text-gray-400]="filterType() === 'sell'"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-gray-600 dark:hover:text-gray-400 mx-1 flex-1 min-w-max">
+          فروش
+        </button>
+        <button 
+          (click)="setFilterType('deposit')" 
+          [class.bg-green-500/20]="filterType() === 'deposit'" 
+          [class.text-green-600]="filterType() === 'deposit'"
+          [class.dark:text-green-400]="filterType() === 'deposit'"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 mx-1 flex-1 min-w-max">
+          واریز
+        </button>
+        <button 
+          (click)="setFilterType('withdraw')" 
+          [class.bg-red-500/20]="filterType() === 'withdraw'" 
+          [class.text-red-600]="filterType() === 'withdraw'"
+          [class.dark:text-red-400]="filterType() === 'withdraw'"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 flex-1 min-w-max">
+          برداشت
+        </button>
+      </div>
+
+      <!-- Status Filters -->
+      <div class="flex justify-center bg-white/50 dark:bg-black/20 rounded-2xl p-1 flex-wrap">
+        <button 
+          (click)="setFilterStatus('all')" 
+          [class.bg-gray-400/20]="filterStatus() === 'all'" 
+          [class.dark:bg-gray-500/20]="filterStatus() === 'all'"
+          [class.text-gray-600]="filterStatus() === 'all'"
+          [class.dark:text-gray-400]="filterStatus() === 'all'"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white flex-1 min-w-max">
+          همه وضعیت‌ها
+        </button>
+        <button 
+          (click)="setFilterStatus('pending')" 
+          [class.bg-yellow-500/20]="filterStatus() === 'pending'" 
+          [class.text-yellow-600]="filterStatus() === 'pending'"
+          [class.dark:text-yellow-400]="filterStatus() === 'pending'"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-yellow-600 dark:hover:text-yellow-400 mx-1 flex-1 min-w-max">
+          در انتظار
+        </button>
+        <button 
+          (click)="setFilterStatus('approved')" 
+          [class.bg-green-500/20]="filterStatus() === 'approved'" 
+          [class.text-green-600]="filterStatus() === 'approved'"
+          [class.dark:text-green-400]="filterStatus() === 'approved'"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 mx-1 flex-1 min-w-max">
+          تایید شده
+        </button>
+        <button 
+          (click)="setFilterStatus('rejected')" 
+          [class.bg-red-500/20]="filterStatus() === 'rejected'" 
+          [class.text-red-600]="filterStatus() === 'rejected'"
+          [class.dark:text-red-400]="filterStatus() === 'rejected'"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 flex-1 min-w-max">
+          رد شده
+        </button>
+      </div>
+    </div>
+
+
     <div class="space-y-3">
       @if (historyItems().length === 0) {
         <div class="flex flex-col items-center justify-center py-12 text-gray-500 bg-gray-100 dark:bg-gray-800/30 rounded-3xl border border-gray-200 dark:border-white/5">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-            <p>هیچ عملیاتی برای نمایش وجود ندارد.</p>
+            <p>
+              @if (filterStatus() === 'all' && filterType() === 'all') {
+                هیچ عملیاتی برای نمایش وجود ندارد.
+              } @else {
+                هیچ عملیاتی با فیلترهای انتخاب شده یافت نشد.
+              }
+            </p>
         </div>
       } @else {
         @for (item of historyItems(); track item.id) {

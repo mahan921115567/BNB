@@ -7,18 +7,11 @@
             <div class="w-10 h-10 bg-amber-400 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/30">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             </div>
-            <span class="text-2xl font-black tracking-wide font-mono">SARAF</span>
+            <span class="text-2xl font-black tracking-wide font-mono">NEVEX</span>
         </div>
         <div class="flex items-center gap-2">
             <button (click)="start.emit()" class="px-6 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 rounded-full text-sm font-semibold transition-all backdrop-blur-sm">
                 ورود به حساب
-            </button>
-            <button (click)="themeService.toggleTheme()" class="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-amber-400 border border-gray-300 dark:border-gray-700 p-2 rounded-full text-sm transition-all backdrop-blur-sm">
-                @if(themeService.theme() === 'dark') {
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" clip-rule="evenodd" /></svg>
-                } @else {
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
-                }
             </button>
         </div>
     </nav>
@@ -30,11 +23,11 @@
 
         <h1 class="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight mb-6 leading-tight">
             آینده مالی خود را در <br class="hidden md:block" />
-            <span class="text-amber-400">SARAF بسازید</span>
+            <span class="text-amber-400">NEVEX بسازید</span>
         </h1>
         <p class="text-gray-600 dark:text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
             سریع‌ترین و امن‌ترین پلتفرم خرید و فروش ارزهای دیجیتال. 
-            با کمترین کارمزد و پشتیبانی ۲۴ ساعته در SARAF معامله کنید.
+            با کمترین کارمزد و پشتیبانی ۲۴ ساعته در NEVEX معامله کنید.
         </p>
         
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -56,9 +49,9 @@
              <div class="h-px bg-gray-300 dark:bg-gray-700 flex-grow max-w-xs ml-4 hidden sm:block"></div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            @for (crypto of topCryptos(); track crypto.id) {
+            @for (crypto of topCryptos(); track crypto.id; let i = $index) {
                 <div class="bg-gray-100 dark:bg-gray-900 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 rounded-2xl hover:bg-gray-200/60 dark:hover:bg-gray-800/60 transition-all group cursor-default">
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-black/5 dark:bg-white/5 p-1.5" [innerHTML]="crypto.sanitizedLogo"></div>
                             <div>
@@ -76,9 +69,14 @@
                             {{ (crypto.change24h || 0) | number:'1.2-2' }}%
                         </span>
                     </div>
-                    <p class="text-xl font-mono font-bold text-gray-900 dark:text-white">
-                        {{ crypto.price | number:'1.0-0' }} <span class="text-xs text-gray-500 font-sans">تومان</span>
-                    </p>
+                     <div class="flex items-end justify-between mt-4">
+                        <p class="text-xl font-mono font-bold text-gray-900 dark:text-white">
+                            {{ crypto.price | number:'1.0-0' }} <span class="text-xs text-gray-500 font-sans">تومان</span>
+                        </p>
+                        <div class="opacity-70 group-hover:opacity-100 transition-opacity">
+                            <app-price-chart [cryptoId]="crypto.id" [delay]="i * 100"></app-price-chart>
+                        </div>
+                    </div>
                 </div>
             }
         </div>
@@ -87,7 +85,7 @@
     <!-- Features -->
     <section class="container mx-auto px-6 py-20 relative z-10">
         <div class="text-center mb-16">
-            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">چرا SARAF را انتخاب کنید؟</h2>
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">چرا NEVEX را انتخاب کنید؟</h2>
             <p class="text-gray-600 dark:text-gray-400">بهترین امکانات برای معامله‌گران حرفه‌ای و تازه‌کار</p>
         </div>
 
@@ -97,7 +95,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">امنیت تضمین شده</h3>
-                <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">دارایی‌های شما در کیف پول‌های سرد و امن نگهداری می‌شوند. با خیال راحت در SARAF معامله کنید.</p>
+                <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">دارایی‌های شما در کیف پول‌های سرد و امن نگهداری می‌شوند. با خیال راحت در NEVEX معامله کنید.</p>
             </div>
 
             <div class="bg-gray-100 dark:bg-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-800 hover:border-amber-400/30 transition-colors text-center group">
@@ -113,12 +111,12 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">پشتیبانی ۲۴/۷</h3>
-                <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">تیم پشتیبانی SARAF در تمام ساعات شبانه روز آماده پاسخگویی به سوالات شماست.</p>
+                <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">تیم پشتیبانی NEVEX در تمام ساعات شبانه روز آماده پاسخگویی به سوالات شماست.</p>
             </div>
         </div>
     </section>
 
     <footer class="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 py-8 text-center text-gray-500 text-sm relative z-10">
-        <p>© 2024 صرافی SARAF. تمامی حقوق محفوظ است.</p>
+        <p>© 2024 صرافی NEVEX. تمامی حقوق محفوظ است.</p>
     </footer>
 </div>

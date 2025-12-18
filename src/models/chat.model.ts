@@ -9,8 +9,9 @@ export interface ChatMessage {
 }
 
 export interface ChatSession {
-  id: string; // Corresponds to the username
+  id: string; // Corresponds to the username or guestId
   username: string;
+  isGuest: boolean;
   messages: ChatMessage[];
   lastMessageTimestamp: number;
   hasUnreadByExpert: boolean;

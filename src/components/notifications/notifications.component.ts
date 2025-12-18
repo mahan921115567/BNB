@@ -1,4 +1,3 @@
-
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotificationService } from '../../services/notification.service';
@@ -21,13 +20,17 @@ export class NotificationsComponent {
   userNotifications = computed(() => {
     const user = this.currentUser();
     if (!user) return [];
-    return this.notificationService.getUserNotifications(user.username)();
+    const username = user.username;
+    return this.notificationService.allNotifications()
+      .filter(n => n.userId === username || n.userId === 'all')
+      .sort((a, b) => b.timestamp - a.timestamp);
   });
 
   unreadCount = computed(() => {
     const user = this.currentUser();
     if (!user) return 0;
-    return this.notificationService.getUnreadCount(user.username)();
+    const username = user.username;
+    return this.notificationService.allNotifications().filter(n => (n.userId === username || n.userId === 'all') && !n.read).length;
   });
 
   toggle() {
